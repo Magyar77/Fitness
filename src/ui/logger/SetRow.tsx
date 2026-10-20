@@ -86,7 +86,7 @@ export function SetRow({ set, exercise, fields, onChange, onRemove }: Props) {
         >
           ✓
         </button>
-        <button type="button" className="icon" onClick={() => setMore(!more)} aria-label="More options" aria-expanded={more}>⋯</button>
+        <button type="button" className="icon" onClick={() => setMore(!more)} aria-label="More options" aria-expanded={more}>…</button>
       </div>
 
       {(fields.tempo !== null || fields.pause) && (

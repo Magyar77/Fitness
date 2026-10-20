@@ -36,7 +36,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     [db],
   );
 
-  if (!profile) return <section className="screen"><p className="muted">Loading…</p></section>;
+  if (!profile) return <main className="content"><p className="muted">Loading…</p></main>;
   return <ProfileContext.Provider value={{ profile, update, reload }}>{children}</ProfileContext.Provider>;
 }
 

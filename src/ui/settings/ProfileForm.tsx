@@ -5,11 +5,17 @@ import { GOALS, type Goal } from '../../data/profile';
 import { STANDARD_BAR_KG, STANDARD_BAR_LB_IN_KG, fromDisplay, toDisplay, type Unit } from '../../engine/units';
 import { NumberField } from '../logger/NumberField';
 import { useProfile } from '../profile';
+import { getThemePref, setThemePref, type ThemePref } from '../theme';
 
 /** Weight unit, barbell convention and goals. Saved as soon as something changes. */
 export function ProfileForm() {
   const { profile, update } = useProfile();
   const [note, setNote] = useState<string | null>(null);
+  const [theme, setTheme] = useState<ThemePref>(getThemePref);
+  const chooseTheme = (t: ThemePref) => {
+    setThemePref(t);
+    setTheme(t);
+  };
 
   async function setUnit(unit: Unit) {
     if (unit === profile.unit) return;
@@ -34,6 +40,14 @@ export function ProfileForm() {
 
   return (
     <div className="form">
+      <fieldset className="field">
+        <legend>Appearance</legend>
+        <div className="segmented">
+          {([['system', 'Follow phone'], ['light', 'Light'], ['dark', 'Dark']] as [ThemePref, string][]).map(([t, label]) => (
+            <button key={t} type="button" className={theme === t ? '' : 'secondary'} aria-pressed={theme === t} onClick={() => chooseTheme(t)}>{label}</button>
+          ))}
+        </div>
+      </fieldset>
       <fieldset className="field">
         <legend>Weight unit</legend>
         <div className="segmented">

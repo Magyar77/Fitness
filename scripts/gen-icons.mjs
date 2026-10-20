@@ -4,8 +4,9 @@
 import { writeFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 
-const BG = [0x11, 0x14, 0x18];
-const FG = [0x4f, 0xb3, 0xff];
+// Graphite charcoal with the mint accent: reads well on light and dark wallpapers.
+const BG = [0x16, 0x16, 0x16];
+const FG = [0x5b, 0xc4, 0x8a];
 // Shapes in a 512-unit design space, matching public/icon.svg.
 const RECTS = [
   [96, 150, 416, 186],
