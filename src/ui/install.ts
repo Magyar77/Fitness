@@ -45,3 +45,9 @@ export function onInstallChange(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
 }
+
+/** iPhone or iPad (iPadOS reports itself as a Mac with touch). */
+export function isIos(): boolean {
+  const ua = navigator.userAgent;
+  return /iPhone|iPad|iPod/.test(ua) || (ua.includes('Macintosh') && navigator.maxTouchPoints > 1);
+}

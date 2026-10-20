@@ -18,7 +18,7 @@ body {
 }
 
 .content {
-  padding: 16px 16px calc(var(--tabbar-h) + 16px + env(safe-area-inset-bottom));
+  padding: calc(16px + env(safe-area-inset-top)) 16px calc(var(--tabbar-h) + 16px + env(safe-area-inset-bottom));
   max-width: 640px;
   margin: 0 auto;
 }

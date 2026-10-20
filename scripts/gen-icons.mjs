@@ -1,4 +1,5 @@
-// Generates public/icon-192.png and public/icon-512.png (pull-up bar on dark background)
+// Generates public/icon-192.png, icon-512.png and apple-touch-icon.png (180 px, iPhone home screen):
+// a pull-up bar on a dark background,
 // with no image dependencies: raw RGBA pixels -> zlib -> PNG chunks.
 import { writeFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
@@ -59,7 +60,7 @@ function png(size) {
   ]);
 }
 
-for (const size of [192, 512]) {
-  writeFileSync(new URL(`../public/icon-${size}.png`, import.meta.url), png(size));
-  console.log(`wrote public/icon-${size}.png`);
+for (const [size, name] of [[192, 'icon-192.png'], [512, 'icon-512.png'], [180, 'apple-touch-icon.png']]) {
+  writeFileSync(new URL(`../public/${name}`, import.meta.url), png(size));
+  console.log(`wrote public/${name}`);
 }
