@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { getDb } from '../../data/db';
 import { backupReminder, checkBackup, exportBackup, importBundle, markBackedUp, restoreBackup } from '../../data/backup';
 import { EquipmentForm } from '../settings/EquipmentForm';
+import { InstallCard } from '../InstallCard';
 import { bodyWeightCsv, setsCsv } from '../../data/csv';
 import { requestPersistence, storageStatus, type StorageStatus } from '../../data/storage';
 import { downloadText } from '../download';
@@ -133,6 +134,11 @@ export function MoreScreen() {
       <h1>More</h1>
 
       {message && <p className={`notice ${message.kind}`} role="status">{message.text}</p>}
+
+      <div className="card">
+        <h2>Install on this phone</h2>
+        <InstallCard />
+      </div>
 
       <div className="card">
         <h2>Data on this device</h2>

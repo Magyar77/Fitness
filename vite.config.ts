@@ -6,6 +6,8 @@ import { VitePWA } from 'vite-plugin-pwa';
 // Relative base so the build works from any static host sub-path (e.g. GitHub Pages).
 export default defineConfig({
   base: './',
+  // One ~150 kB (gzipped) bundle, cached once by the service worker for offline use.
+  build: { chunkSizeWarningLimit: 800 },
   plugins: [
     react(),
     VitePWA({

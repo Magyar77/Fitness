@@ -10,6 +10,7 @@ import { weekStart } from '../../engine/dates';
 import type { ProgramVersion, WeekPlan, WorkoutSession, WorkoutTemplate } from '../../engine/model';
 import { clock, niceDate, today } from '../dates';
 import { Dashboard } from './Dashboard';
+import { InstallCard } from '../InstallCard';
 
 interface State {
   program: ProgramVersion;
@@ -66,6 +67,8 @@ export function TodayScreen() {
     <section className="screen">
       <h1>Today</h1>
       <p className="muted">{niceDate(date)}</p>
+
+      <InstallCard compact />
 
       {pending.length > 0 && (
         <div className="card highlight">
