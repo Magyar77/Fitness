@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getDb } from '../../data/db';
 import { checkWeek, loadWeekContext, proposeWeek, saveWeek, unplaced, type WeekContext } from '../../data/weeks';
 import { customWorkouts } from '../../data/custom';
-import { currentProgram } from '../../data/workouts';
+import { exerciseMap } from '../../data/custom';
+import { currentProgram, startSession } from '../../data/workouts';
+import { WorkoutPreview } from '../week/WorkoutPreview';
 import { addDays, weekDates, weekStart as mondayOf, type IsoDate } from '../../engine/dates';
-import type { ProgramVersion, WeekPlanEntry, WorkoutTemplate } from '../../engine/model';
+import type { Exercise, Prescription, ProgramVersion, SetLog, WeekPlanEntry, WorkoutTemplate } from '../../engine/model';
 import type { ScheduleWarning } from '../../engine/scheduling';
 import { niceDate, today } from '../dates';
 
@@ -46,12 +49,19 @@ export function WeekScreen() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [selected, setSelected] = useState<Selection>(null);
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const navigate = useNavigate();
+  const [details, setDetails] = useState<{ prescriptions: Prescription[]; exercises: Map<string, Exercise>; sets: SetLog[] } | null>(null);
+  /** Expanded workouts, keyed "date:code". */
+  const [open, setOpen] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let alive = true;
-    Promise.all([loadWeekContext(db, weekStart), currentProgram(db), customWorkouts(db, true)])
-      .then(([c, p, m]) => {
+    Promise.all([loadWeekContext(db, weekStart), currentProgram(db), customWorkouts(db, true), db.prescriptions.toArray(), exerciseMap(db)])
+      .then(async ([c, p, m, prescriptions, exercises]) => {
+        const doneIds = c.completed.map((e) => e.sessionId).filter((id): id is string => !!id);
+        const sets = doneIds.length ? await db.sets.where('sessionId').anyOf(doneIds).toArray() : [];
         if (!alive) return;
+        setDetails({ prescriptions, exercises, sets });
         setCtx(c);
         setProgram(p);
         setMine(m);
@@ -119,6 +129,23 @@ export function WeekScreen() {
     edit(draft!.entries.map((e, i) => (i === selected.index ? { ...e, state: 'skipped' } : e)));
   }
 
+  function toggle(key: string) {
+    const next = new Set(open);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    setOpen(next);
+  }
+
+  async function start(t: WorkoutTemplate, date: IsoDate) {
+    // Only today's workout is started from here; future ones are moved to today first.
+    try {
+      const id = await startSession(db, t, t.kind === 'program' ? program!.id : null, date);
+      navigate(`/session/${id}`);
+    } catch (err) {
+      setMessage({ kind: 'error', text: (err as Error).message });
+    }
+  }
+
   async function save() {
     if (conflicts.length && !window.confirm(`Save anyway?\n\n${conflicts.map((c) => c.message).join('\n')}`)) return;
     try {
@@ -162,6 +189,12 @@ export function WeekScreen() {
         </div>
       )}
 
+      <div className="expand-all">
+        <span className="muted small">Exercises:</span>
+        <button type="button" className="link" onClick={() => setOpen(new Set(draft.entries.filter((e) => e.state !== 'skipped').map((e) => `${e.date}:${e.templateCode}`)))}>show all</button>
+        <button type="button" className="link" onClick={() => setOpen(new Set())}>hide all</button>
+      </div>
+
       <div className="days">
         {dates.map((d) => {
           const a = availability(d);
@@ -175,18 +208,46 @@ export function WeekScreen() {
                   {LABEL[a]}
                 </button>
               </div>
-              {items.map(({ e, i }) => (
-                <button
-                  key={`${e.templateCode}${i}`}
-                  type="button"
-                  className={`entry ${e.state} ${selected?.kind === 'entry' && selected.index === i ? 'selected' : ''}`}
-                  disabled={e.state === 'done'}
-                  onClick={() => setSelected({ kind: 'entry', index: i })}
-                >
-                  <span>{name(e.templateCode)}</span>
-                  <span className="entry-state">{e.state === 'done' ? '✓ done' : isPast(d) ? 'missed' : 'planned'}</span>
-                </button>
-              ))}
+              {items.map(({ e, i }) => {
+                const key = `${e.date}:${e.templateCode}`;
+                const expanded = open.has(key);
+                const t = byCode.get(e.templateCode);
+                return (
+                  <div key={`${e.templateCode}${i}`} className="entry-block">
+                    <div className="entry-wrap">
+                      <button
+                        type="button"
+                        className={`entry ${e.state} ${selected?.kind === 'entry' && selected.index === i ? 'selected' : ''}`}
+                        disabled={e.state === 'done'}
+                        onClick={() => setSelected({ kind: 'entry', index: i })}
+                        aria-label={`${name(e.templateCode)}, ${e.state === 'done' ? 'done' : 'planned'}. Tap to move or skip.`}
+                      >
+                        <span>{name(e.templateCode)}</span>
+                        <span className="entry-state">{e.state === 'done' ? '✓ done' : isPast(d) ? 'missed' : 'planned'}</span>
+                      </button>
+                      <button type="button" className="icon expand" onClick={() => toggle(key)} aria-expanded={expanded} aria-label={`${expanded ? 'Hide' : 'Show'} exercises for ${name(e.templateCode)}`}>
+                        {expanded ? '⌃' : '⌄'}
+                      </button>
+                    </div>
+                    {expanded && t && details && (
+                      <div className="entry-detail">
+                        <WorkoutPreview
+                          template={t}
+                          date={e.date}
+                          prescriptions={details.prescriptions}
+                          exercises={details.exercises}
+                          doneSets={e.state === 'done' && e.sessionId ? details.sets.filter((x) => x.sessionId === e.sessionId) : null}
+                        />
+                        {e.state === 'done' && e.sessionId ? (
+                          <button type="button" className="link" onClick={() => navigate(`/session/${e.sessionId}`)}>View workout</button>
+                        ) : e.date === now ? (
+                          <button type="button" className="link" onClick={() => void start(t, now)}>Start {t.kind === 'program' ? t.code : t.name}</button>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
               {selected && !isPast(d) && (
                 <button type="button" className="link put" onClick={() => placeOn(d)}>Put here</button>
               )}
