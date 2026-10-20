@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getDb } from '../../data/db';
+import { backupReminder } from '../../data/backup';
 import { customWorkouts } from '../../data/custom';
 import { pendingDecisions } from '../../data/recommendations';
 import { currentProgram, inProgressSession, startSession } from '../../data/workouts';
@@ -17,6 +18,7 @@ interface State {
   pending: DecisionRecord[];
   /** Your workouts, including archived ones (so planned/done entries still resolve). */
   mine: WorkoutTemplate[];
+  backup: { due: boolean; text: string };
 }
 
 const label = (t: WorkoutTemplate) => (t.kind === 'program' ? `${t.code} · ${t.name}` : t.name);
@@ -30,8 +32,8 @@ export function TodayScreen() {
 
   useEffect(() => {
     let alive = true;
-    Promise.all([currentProgram(db), inProgressSession(db), db.weekPlans.get(weekStart(date)), pendingDecisions(db), customWorkouts(db, true)])
-      .then(([program, open, plan, pending, mine]) => alive && setState({ program, open, plan, pending, mine }))
+    Promise.all([currentProgram(db), inProgressSession(db), db.weekPlans.get(weekStart(date)), pendingDecisions(db), customWorkouts(db, true), backupReminder(db)])
+      .then(([program, open, plan, pending, mine, backup]) => alive && setState({ program, open, plan, pending, mine, backup }))
       .catch((e: Error) => alive && setError(e.message));
     return () => {
       alive = false;
@@ -51,7 +53,7 @@ export function TodayScreen() {
   if (error) return <section className="screen"><h1>Today</h1><p className="notice error">{error}</p></section>;
   if (!state) return <section className="screen"><h1>Today</h1><p className="muted">Loading…</p></section>;
 
-  const { program, open, plan, pending, mine } = state;
+  const { program, open, plan, pending, mine, backup } = state;
   const all = [...program.templates, ...mine];
   const slotName = new Map(all.flatMap((t) => t.slots).map((s) => [s.slotKey, s.name]));
   const byCode = new Map(all.map((t) => [t.code, t]));
@@ -117,6 +119,14 @@ export function TodayScreen() {
       )}
 
       <Dashboard date={date} templates={byCode} pending={pending.length} />
+
+      {backup.due && (
+        <div className="card">
+          <h2>Back up your data</h2>
+          <p className="muted">{backup.text}</p>
+          <a href="#/more" className="link-button">Open backup</a>
+        </div>
+      )}
 
       <div className="card">
         <h2>{open ? 'Other workouts' : todays.length ? 'Or start another workout' : 'Start a workout'}</h2>

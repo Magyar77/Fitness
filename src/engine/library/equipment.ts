@@ -4,19 +4,29 @@ const LB = 0.45359237;
 const lb = (pounds: number) => Math.round(pounds * LB * 10) / 10;
 
 /**
- * Assisted machine (pull-ups, dips, negatives): kg of assistance.
- * Derived from logged values and the "5 lb lever" answer: a 15 lb pin stack
- * (6.8, 13.6, 20.4, 27.2, 34.0 kg) with an optional +5 lb (2.3 kg) lever.
+ * Every assistance level an assisted machine offers: no assistance, each pin, and
+ * (with an add-on lever) the lever alone and each pin plus the lever. kg, ascending.
  */
-function assistedLadder(): number[] {
-  const pins = [0, 15, 30, 45, 60, 75];
-  const values = new Set<number>();
-  for (const p of pins) {
-    values.add(lb(p));
-    if (p > 0) values.add(lb(p + 5)); // pin + lever
+export function assistedLadderFrom(pinsKg: number[], leverKg: number | null): number[] {
+  const r = (v: number) => Math.round(v * 10) / 10;
+  const values = new Set<number>([0]);
+  for (const p of pinsKg) {
+    values.add(r(p));
+    if (leverKg) values.add(r(p + leverKg));
   }
-  values.add(lb(5)); // lever only
+  if (leverKg) values.add(r(leverKg));
   return [...values].sort((a, b) => a - b);
+}
+
+/**
+ * Default, derived from logged values and the "5 lb lever" answer: a 15 lb pin stack
+ * (6.8, 13.6, 20.4, 27.2, 34.0 kg) with an optional +5 lb (2.3 kg) lever. Confirm in the gym.
+ */
+export const DEFAULT_ASSIST_PINS = [15, 30, 45, 60, 75].map(lb);
+export const DEFAULT_ASSIST_LEVER = lb(5);
+
+function assistedLadder(): number[] {
+  return assistedLadderFrom(DEFAULT_ASSIST_PINS, DEFAULT_ASSIST_LEVER);
 }
 
 export const EQUIPMENT: EquipmentProfile[] = [

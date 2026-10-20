@@ -1,4 +1,5 @@
 import { HashRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom';
+import { ErrorBoundary } from './ErrorBoundary';
 import { MoreScreen } from './screens/MoreScreen';
 import { SessionScreen } from './screens/SessionScreen';
 import { TodayScreen } from './screens/TodayScreen';
@@ -20,6 +21,7 @@ export function App() {
   return (
     <HashRouter>
       <main className="content">
+        <ErrorBoundary>
         <Routes>
           <Route path="/today" element={<TodayScreen />} />
           <Route path="/session/:id" element={<SessionScreen />} />
@@ -30,6 +32,7 @@ export function App() {
           <Route path="/more" element={<MoreScreen />} />
           <Route path="*" element={<Navigate to="/today" replace />} />
         </Routes>
+        </ErrorBoundary>
       </main>
       <nav className="tabbar">
         {TABS.map((t) => (

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { getDb } from '../../data/db';
-import { checkBackup, exportBackup, importBundle, restoreBackup } from '../../data/backup';
+import { backupReminder, checkBackup, exportBackup, importBundle, markBackedUp, restoreBackup } from '../../data/backup';
+import { EquipmentForm } from '../settings/EquipmentForm';
 import { bodyWeightCsv, setsCsv } from '../../data/csv';
 import { requestPersistence, storageStatus, type StorageStatus } from '../../data/storage';
 import { downloadText } from '../download';
@@ -31,6 +32,7 @@ export function MoreScreen() {
   const [message, setMessage] = useState<Message>(null);
   const [busy, setBusy] = useState(false);
   const [version, setVersion] = useState(0); // bump to reload counts after a change
+  const [reminder, setReminder] = useState<{ due: boolean; text: string } | null>(null);
   const restoreInput = useRef<HTMLInputElement>(null);
   const importInput = useRef<HTMLInputElement>(null);
 
@@ -43,8 +45,10 @@ export function MoreScreen() {
       db.prescriptions.count(),
       db.bodyWeights.count(),
       db.weekPlans.count(),
-    ]).then(([s, sessions, sets, prescriptions, bodyWeights, weekPlans]) => {
+      backupReminder(db),
+    ]).then(([s, sessions, sets, prescriptions, bodyWeights, weekPlans, r]) => {
       if (!alive) return;
+      setReminder(r);
       setStatus(s);
       setCounts({ sessions, sets, prescriptions, bodyWeights, weekPlans });
     });
@@ -70,6 +74,7 @@ export function MoreScreen() {
     run(async () => {
       const backup = await exportBackup(db);
       downloadText(`fitness-backup-${today()}.json`, JSON.stringify(backup), 'application/json');
+      await markBackedUp(db);
       return { kind: 'ok', text: 'Backup saved to your downloads. Keep a copy somewhere safe, such as Google Drive.' };
     });
 
@@ -153,7 +158,8 @@ export function MoreScreen() {
 
       <div className="card">
         <h2>Backup</h2>
-        <p className="muted">Your data lives only on this phone. Save a backup regularly.</p>
+        <p className="muted">Your data lives only on this phone. Save a backup regularly, e.g. to Google Drive.</p>
+        {reminder?.text && <p className={reminder.due ? 'notice warn small' : 'muted small'}>{reminder.text}</p>}
         <div className="buttons">
           <button type="button" onClick={exportJson} disabled={busy}>Export backup (JSON)</button>
           <button type="button" className="secondary" onClick={() => restoreInput.current?.click()} disabled={busy}>Restore backup…</button>
@@ -166,6 +172,11 @@ export function MoreScreen() {
         <p className="muted">Adds records from a data file (e.g. your Weeks 1–2 history). Existing records are never overwritten.</p>
         <button type="button" className="secondary" onClick={() => importInput.current?.click()} disabled={busy}>Import data file…</button>
         <input ref={importInput} type="file" accept="application/json,.json" hidden onChange={(e) => void onFile(e, 'import')} />
+      </div>
+
+      <div className="card">
+        <h2>Equipment</h2>
+        <EquipmentForm />
       </div>
 
       <div className="card">

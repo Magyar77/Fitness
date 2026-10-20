@@ -12,7 +12,7 @@ import {
   type DecisionRecord,
   type TargetDraft,
 } from '../engine/progression';
-import { EQUIPMENT } from '../engine/library/equipment';
+import { getEquipment } from './equipment';
 import type { FitnessDB } from './db';
 import { currentProgram, exerciseById, findTemplate } from './workouts';
 
@@ -64,7 +64,7 @@ export async function evaluateSession(db: FitnessDB, sessionId: string, now = ne
   if (!template) return [];
   const program = template.kind === 'program' ? await currentProgram(db) : null;
   const allSlots: TemplateSlot[] = program ? program.templates.flatMap((t) => t.slots) : template.slots;
-  const [sessions, prescriptions] = await Promise.all([db.sessions.toArray(), db.prescriptions.toArray()]);
+  const [sessions, prescriptions, equipment] = await Promise.all([db.sessions.toArray(), db.prescriptions.toArray(), getEquipment(db)]);
 
   const records: DecisionRecord[] = [];
   const created: Prescription[] = [];
@@ -85,7 +85,7 @@ export async function evaluateSession(db: FitnessDB, sessionId: string, now = ne
       slot,
       template,
       exercise,
-      equipment: EQUIPMENT.find((e) => e.id === exercise.equipmentProfileId),
+      equipment: equipment.find((e) => e.id === exercise.equipmentProfileId),
       current,
       history: performancesFor(sessions, sets, keys, session.date).filter((p) => p.session.date < session.date || p.session.id === sessionId),
       settings: DEFAULT_SETTINGS,

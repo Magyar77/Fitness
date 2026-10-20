@@ -157,3 +157,28 @@ export async function importBundle(db: FitnessDB, raw: unknown): Promise<{ ok: t
   });
   return { ok: true, report };
 }
+
+// ---------------------------------------------------------------------------
+// Backup reminder
+
+const BACKUP_KEY = 'lastBackupAt';
+const REMIND_AFTER_DAYS = 7;
+
+export async function markBackedUp(db: FitnessDB, now = new Date()): Promise<void> {
+  await db.settings.put({ key: BACKUP_KEY, value: now.toISOString() });
+}
+
+/** A reminder once there is data and no backup in the last week. */
+export function backupDue(lastBackupAt: string | null, completedWorkouts: number, now: Date): { due: boolean; text: string } {
+  if (completedWorkouts === 0) return { due: false, text: '' };
+  if (!lastBackupAt) return { due: true, text: "You haven't saved a backup yet. Your data lives only on this phone." };
+  const days = Math.floor((now.getTime() - new Date(lastBackupAt).getTime()) / 86_400_000);
+  return days >= REMIND_AFTER_DAYS
+    ? { due: true, text: `Last backup was ${days} days ago. Save a fresh one to keep your history safe.` }
+    : { due: false, text: `Last backup ${days === 0 ? 'today' : `${days} day${days === 1 ? '' : 's'} ago`}.` };
+}
+
+export async function backupReminder(db: FitnessDB, now = new Date()): Promise<{ due: boolean; text: string }> {
+  const [row, completed] = await Promise.all([db.settings.get(BACKUP_KEY), db.sessions.where('status').equals('completed').count()]);
+  return backupDue(typeof row?.value === 'string' ? row.value : null, completed, now);
+}

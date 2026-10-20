@@ -49,6 +49,9 @@ export interface EquipmentProfile {
   stepKg?: number | null;
   /** Ascending, kg. For assisted machines these are kg of assistance. */
   loadsKg?: number[];
+  /** Assisted machines: the pin values and add-on lever the ladder was built from. */
+  pinsKg?: number[];
+  leverKg?: number | null;
   note: string;
   quality: DataQuality;
 }
