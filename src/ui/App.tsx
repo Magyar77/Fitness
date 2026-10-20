@@ -3,11 +3,13 @@ import { MoreScreen } from './screens/MoreScreen';
 import { SessionScreen } from './screens/SessionScreen';
 import { TodayScreen } from './screens/TodayScreen';
 import { WeekScreen } from './screens/WeekScreen';
+import { WorkoutsScreen } from './screens/WorkoutsScreen';
+import { WorkoutEditor } from './workouts/WorkoutEditor';
 
 const TABS = [
   { path: '/today', label: 'Today' },
   { path: '/week', label: 'Week' },
-  { path: '/log', label: 'Log' },
+  { path: '/log', label: 'Workouts' },
   { path: '/progress', label: 'Progress' },
   { path: '/more', label: 'More' },
 ] as const;
@@ -29,7 +31,8 @@ export function App() {
           <Route path="/today" element={<TodayScreen />} />
           <Route path="/session/:id" element={<SessionScreen />} />
           <Route path="/week" element={<WeekScreen />} />
-          <Route path="/log" element={<Placeholder title="Log" />} />
+          <Route path="/log" element={<WorkoutsScreen />} />
+          <Route path="/workouts/:code" element={<WorkoutEditor />} />
           <Route path="/progress" element={<Placeholder title="Progress" />} />
           <Route path="/more" element={<MoreScreen />} />
           <Route path="*" element={<Navigate to="/today" replace />} />

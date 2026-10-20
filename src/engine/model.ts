@@ -33,6 +33,12 @@ export interface Exercise {
   equipmentProfileId?: string;
   tags: string[];
   custom: boolean;
+  /** Main body region (null for cardio); used to judge how demanding a custom workout is. */
+  region: Region | null;
+  /** Loaded pulling (rows, pulldowns, pull-ups): back fatigue relevant to the main pull-up day. */
+  pull: boolean;
+  /** Default per-side label for unilateral exercises. */
+  perSide?: 'leg' | 'arm' | 'side';
 }
 
 export interface EquipmentProfile {
@@ -113,6 +119,8 @@ export interface WorkoutTemplate {
   easyDay: boolean;
   notes: string[];
   slots: TemplateSlot[];
+  /** Custom workouts are archived instead of deleted, so past sessions still open. */
+  archived?: boolean;
 }
 
 export interface PullUpMilestone {

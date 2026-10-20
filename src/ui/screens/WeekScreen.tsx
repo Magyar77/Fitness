@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getDb } from '../../data/db';
 import { checkWeek, loadWeekContext, proposeWeek, saveWeek, unplaced, type WeekContext } from '../../data/weeks';
+import { customWorkouts } from '../../data/custom';
 import { currentProgram } from '../../data/workouts';
 import { addDays, weekDates, weekStart as mondayOf, type IsoDate } from '../../engine/dates';
 import type { ProgramVersion, WeekPlanEntry, WorkoutTemplate } from '../../engine/model';
@@ -41,17 +42,19 @@ export function WeekScreen() {
   const [weekStart, setWeekStart] = useState(() => mondayOf(now));
   const [ctx, setCtx] = useState<WeekContext | null>(null);
   const [program, setProgram] = useState<ProgramVersion | null>(null);
+  const [mine, setMine] = useState<WorkoutTemplate[]>([]);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [selected, setSelected] = useState<Selection>(null);
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     let alive = true;
-    Promise.all([loadWeekContext(db, weekStart), currentProgram(db)])
-      .then(([c, p]) => {
+    Promise.all([loadWeekContext(db, weekStart), currentProgram(db), customWorkouts(db, true)])
+      .then(([c, p, m]) => {
         if (!alive) return;
         setCtx(c);
         setProgram(p);
+        setMine(m);
         setSelected(null);
         setMessage(null);
         if (c.plan) {
@@ -72,12 +75,13 @@ export function WeekScreen() {
   }
 
   const templates = program.templates;
-  const byCode = new Map(templates.map((t) => [t.code, t]));
+  const everything = [...templates, ...mine];
+  const byCode = new Map(everything.map((t) => [t.code, t]));
   const dates = weekDates(weekStart);
   const isPast = (d: IsoDate) => d < now;
   const weekOver = dates.every(isPast);
   const availability = (d: IsoDate): Availability => (draft.restDays.includes(d) ? 'rest' : draft.unavailableDays.includes(d) ? 'unavailable' : 'train');
-  const warnings: ScheduleWarning[] = checkWeek(ctx, templates, draft.entries, draft.restDays, draft.unavailableDays);
+  const warnings: ScheduleWarning[] = checkWeek(ctx, everything, draft.entries, draft.restDays, draft.unavailableDays);
   const missing = unplaced(templates, draft.entries);
   const conflicts = warnings.filter((w) => w.severity === 'conflict');
 
@@ -128,7 +132,7 @@ export function WeekScreen() {
 
   const name = (code: string) => {
     const t = byCode.get(code);
-    return t ? `${t.code} · ${t.name}` : code;
+    return t ? (t.kind === 'program' ? `${t.code} · ${t.name}` : t.name) : code;
   };
   const selectedName = selected?.kind === 'entry' ? name(draft.entries[selected.index]!.templateCode) : selected ? name(selected.code) : '';
   const doneCount = draft.entries.filter((e) => e.state === 'done').length;
@@ -198,6 +202,20 @@ export function WeekScreen() {
             {missing.map((t: WorkoutTemplate) => (
               <button key={t.code} type="button" className={`secondary chip ${selected?.kind === 'template' && selected.code === t.code ? 'selected' : ''}`} onClick={() => setSelected({ kind: 'template', code: t.code })} disabled={weekOver}>
                 + {t.code} · {t.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {mine.some((m) => !m.archived) && !weekOver && (
+        <div className="card">
+          <h2>Add one of your workouts</h2>
+          <p className="muted small">Extra workouts are only placed where you put them.</p>
+          <div className="chips">
+            {mine.filter((m) => !m.archived).map((t) => (
+              <button key={t.code} type="button" className={`secondary chip ${selected?.kind === 'template' && selected.code === t.code ? 'selected' : ''}`} onClick={() => setSelected({ kind: 'template', code: t.code })}>
+                + {t.name}
               </button>
             ))}
           </div>

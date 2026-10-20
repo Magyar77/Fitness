@@ -160,7 +160,7 @@ export function SessionScreen() {
   return (
     <section className={`screen session ${restEndsAt ? 'with-rest' : ''}`}>
       <Link to="/today" className="back">← Today</Link>
-      <h1>{template.code} · {template.name}</h1>
+      <h1>{template.kind === 'program' ? `${template.code} · ` : ''}{template.name}</h1>
       <p className="muted">
         {niceDate(session.date)} · started {clock(session.startedAt)}
         {completed && ` · finished ${clock(session.finishedAt)}`}

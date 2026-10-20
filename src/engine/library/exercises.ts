@@ -1,4 +1,4 @@
-import type { Exercise, LoadType, Measure } from '../model';
+import type { Exercise, LoadType, Measure, Region } from '../model';
 
 const CONVENTION: Record<LoadType, string> = {
   plates: 'Plates only, bar/sled not counted (e.g. "20 kg" = 10 kg per side).',
@@ -18,6 +18,29 @@ const PROFILE: Partial<Record<LoadType, string>> = {
   machine: 'machine-stack',
   cable: 'cable-stack',
   assisted_machine: 'assisted-machine',
+};
+
+const U: Region = 'upper';
+const L: Region = 'lower';
+const K: Region = 'core';
+
+/** Main body region per built-in exercise (cardio has none). */
+const REGION: Record<string, Region> = {
+  'dead-hang': U, 'scapular-pull-up': U, 'assisted-negative-pull-up': U, 'assisted-pull-up': U, 'pull-up': U,
+  'barbell-bench-press': U, 'seated-db-shoulder-press': U, 'incline-db-press': U, 'db-lateral-raise': U,
+  'cable-triceps-pushdown': U, 'db-bench-press': U, 'assisted-dip': U, 'overhead-cable-triceps': U,
+  'lat-pulldown': U, 'single-arm-db-row': U, 'cable-face-pull': U, 'barbell-curl': U, 'incline-db-curl': U,
+  'seated-cable-row': U, 'farmers-carry': U,
+  'barbell-back-squat': L, 'romanian-deadlift': L, 'db-bulgarian-split-squat': L, 'leg-curl': L, 'leg-press': L,
+  'db-walking-lunge': L, 'back-extension-45': L, 'standing-calf-raise': L,
+  'hanging-knee-raise': K, 'hollow-body-hold': K, 'dead-bug': K, 'side-plank': K,
+};
+
+/** Loaded pulling that tires the back for next-day pull-ups. */
+const PULL = new Set(['assisted-negative-pull-up', 'assisted-pull-up', 'pull-up', 'lat-pulldown', 'single-arm-db-row', 'seated-cable-row']);
+
+const PER_SIDE: Record<string, 'leg' | 'arm' | 'side'> = {
+  'db-bulgarian-split-squat': 'leg', 'db-walking-lunge': 'leg', 'single-arm-db-row': 'arm', 'dead-bug': 'side', 'side-plank': 'side',
 };
 
 function ex(
@@ -40,6 +63,9 @@ function ex(
     ...(profile ? { equipmentProfileId: profile } : {}),
     tags: opts.tags ?? [],
     custom: false,
+    region: REGION[id] ?? null,
+    pull: PULL.has(id),
+    ...(PER_SIDE[id] ? { perSide: PER_SIDE[id] } : {}),
   };
 }
 
