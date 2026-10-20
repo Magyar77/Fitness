@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getDb } from '../../data/db';
-import { backupReminder, checkBackup, exportBackup, importBundle, markBackedUp, restoreBackup } from '../../data/backup';
+import { backupReminder, checkBackup, importBundle, newerThanBackup, restoreBackup } from '../../data/backup';
+import { saveBackup } from '../backupActions';
 import { EquipmentForm } from '../settings/EquipmentForm';
 import { InstallCard } from '../InstallCard';
 import { ProfileForm } from '../settings/ProfileForm';
@@ -73,13 +74,7 @@ export function MoreScreen() {
     }
   }
 
-  const exportJson = () =>
-    run(async () => {
-      const backup = await exportBackup(db);
-      downloadText(`fitness-backup-${today()}.json`, JSON.stringify(backup), 'application/json');
-      await markBackedUp(db);
-      return { kind: 'ok', text: 'Backup saved to your downloads. Keep a copy somewhere safe, such as Google Drive.' };
-    });
+  const exportJson = (how: 'share' | 'download') => run(async () => ({ kind: 'ok', text: (await saveBackup(db, how)).text }));
 
   const exportCsv = () =>
     run(async () => {
@@ -104,7 +99,9 @@ export function MoreScreen() {
         const { file: backup, problems } = checkBackup(raw);
         if (!backup) return { kind: 'error', text: `Backup rejected, nothing was changed:\n${problems.slice(0, 8).join('\n')}` };
         const sessions = backup.tables.sessions.length;
-        if (!window.confirm(`Replace ALL data on this device with this backup (${count(sessions, 'workout')}, exported ${backup.exportedAt.slice(0, 10)})?`)) {
+        const newer = await newerThanBackup(db, backup);
+        const lose = newer ? `\n\nCareful: this phone has ${count(newer, 'workout')} newer than this backup. They would be lost. Save a backup first if unsure.` : '';
+        if (!window.confirm(`Replace ALL data on this device with this backup (${count(sessions, 'workout')}, exported ${backup.exportedAt.slice(0, 10)})?${lose}`)) {
           return { kind: 'ok', text: 'Restore cancelled. Nothing was changed.' };
         }
         const r = await restoreBackup(db, raw);
@@ -171,10 +168,11 @@ export function MoreScreen() {
 
       <div className="card">
         <h2>Backup</h2>
-        <p className="muted">Your data lives only on this phone. Save a backup regularly, e.g. to Google Drive.</p>
+        <p className="muted">Your data lives only on this phone. Save a backup regularly: the share menu lets you put it straight into Google Drive, Files or iCloud, or email it to yourself.</p>
         {reminder?.text && <p className={reminder.due ? 'notice warn small' : 'muted small'}>{reminder.text}</p>}
         <div className="buttons">
-          <button type="button" onClick={exportJson} disabled={busy}>Export backup (JSON)</button>
+          <button type="button" onClick={() => exportJson('share')} disabled={busy}>Save backup…</button>
+          <button type="button" className="link" onClick={() => exportJson('download')} disabled={busy}>Download instead</button>
           <button type="button" className="secondary" onClick={() => restoreInput.current?.click()} disabled={busy}>Restore backup…</button>
         </div>
         <input ref={restoreInput} type="file" accept="application/json,.json" hidden onChange={(e) => void onFile(e, 'restore')} />

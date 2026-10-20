@@ -9,6 +9,8 @@ import { niceDate } from '../dates';
 import { useProfile } from '../profile';
 import { hasGoal } from '../../data/profile';
 import { formatLoad } from '../../engine/units';
+import { allRecords } from '../../engine/records';
+import { RecordList } from '../progress/RecordsTab';
 
 interface Props {
   date: string;
@@ -59,6 +61,8 @@ export function Dashboard({ date, templates, pending }: Props) {
   const change = weeklyChange(weeks);
   const latestWeek = weeks.at(-1);
   const met = pullUp.milestones.filter((m) => m.met).length;
+  const recent = allRecords(data.exercises, data.sessions, data.sets, unit, profile.barKg).timeline.filter((r) => r.date >= addDays(date, -14));
+  const records = recent.filter((r, i) => recent.findIndex((x) => x.exerciseId === r.exerciseId) === i).slice(0, 4); // newest per exercise
   const name = (code: string) => {
     const t = templates.get(code);
     return t ? (t.kind === 'program' ? `${t.code} · ${t.name}` : t.name) : code;
@@ -89,6 +93,14 @@ export function Dashboard({ date, templates, pending }: Props) {
         <div className="card">
           <h2>Coaching notes</h2>
           <ul className="reasons">{notes.map((n) => <li key={n}>{n}</li>)}</ul>
+        </div>
+      )}
+
+      {records.length > 0 && (
+        <div className="card">
+          <h2>New records</h2>
+          <RecordList records={records} nameOf={(id) => data.exercises.get(id)?.name ?? id} />
+          <Link to="/progress" className="link-button">All records</Link>
         </div>
       )}
 

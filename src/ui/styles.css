@@ -577,3 +577,11 @@ h2.sub { margin-top: 14px; }
 .swap-list button { width: 100%; height: auto; min-height: 48px; display: grid; gap: 2px; text-align: left; padding: 8px 12px; }
 .swap-list small { color: var(--muted); font-weight: 400; font-size: 12px; }
 button.link.inline { min-height: 0; padding: 0; color: inherit; text-decoration: underline; font-weight: 600; }
+
+/* Records */
+.records { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 12px; }
+.records li { display: grid; gap: 2px; }
+.record-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.gain { font-size: 12px; font-weight: 600; color: var(--accent-text); background: var(--accent-soft); padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.chart-switch { margin-bottom: 8px; }
+.chart-switch button { min-height: 34px; font-size: 13px; }

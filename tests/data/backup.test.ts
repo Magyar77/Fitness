@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it } from 'vitest';
 import { FitnessDB, ensureSeeded, SCHEMA_VERSION } from '../../src/data/db';
-import { checkBackup, exportBackup, importBundle, restoreBackup, type BackupFile } from '../../src/data/backup';
+import { checkBackup, exportBackup, importBundle, newerThanBackup, restoreBackup, type BackupFile } from '../../src/data/backup';
 import { bodyWeightCsv, setsCsv, toCsv } from '../../src/data/csv';
 import { logSets, times } from '../../src/engine/import/compact';
 import { PROGRAM_V2 } from '../../src/engine/program/programV2';
@@ -177,5 +177,15 @@ describe('CSV export', () => {
 
   it('exports body weight sorted by date', () => {
     expect(bodyWeightCsv([...bundle().bodyWeights].reverse())).toBe('date,kg,conditions,source\r\n2026-03-02,80.4,,manual\r\n2026-03-05,80.1,,manual\r\n');
+  });
+
+  it('counts workouts that restoring an older backup would lose', async () => {
+    const db = await freshDb();
+    const done = (id: string, date: string) => ({ id, date, templateCode: 'A', programVersionId: null, status: 'completed' as const, startedAt: null, finishedAt: null, fatigue: null, discomfort: [], conditions: [], notes: [], flags: [], prescriptionSnapshot: null });
+    await db.sessions.add(done('one', '2026-03-01'));
+    const old = await exportBackup(db);
+    expect(await newerThanBackup(db, old)).toBe(0);
+    await db.sessions.bulkAdd([done('two', '2026-03-04'), done('three', '2026-03-06')]);
+    expect(await newerThanBackup(db, old)).toBe(2);
   });
 });

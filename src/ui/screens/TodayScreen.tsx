@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getDb } from '../../data/db';
 import { backupReminder } from '../../data/backup';
+import { saveBackup } from '../backupActions';
 import { customWorkouts } from '../../data/custom';
 import { pendingDecisions } from '../../data/recommendations';
 import { currentProgram, inProgressSession, startSession } from '../../data/workouts';
@@ -29,6 +30,7 @@ export function TodayScreen() {
   const navigate = useNavigate();
   const [state, setState] = useState<State | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [backupNote, setBackupNote] = useState<string | null>(null);
   const date = today();
 
   useEffect(() => {
@@ -123,11 +125,15 @@ export function TodayScreen() {
 
       <Dashboard date={date} templates={byCode} pending={pending.length} />
 
-      {backup.due && (
+      {backupNote && <p className="notice ok">{backupNote}</p>}
+      {backup.due && !backupNote && (
         <div className="card">
           <h2>Back up your data</h2>
           <p className="muted">{backup.text}</p>
-          <a href="#/more" className="link-button">Open backup</a>
+          <div className="buttons">
+            <button type="button" onClick={() => void saveBackup(db).then((r) => r.saved && setBackupNote(r.text))}>Save backup now</button>
+            <a href="#/more" className="link-button">More options</a>
+          </div>
         </div>
       )}
 

@@ -11,10 +11,13 @@ import { niceDate, today } from '../dates';
 import { useBar, useProfile, useUnit } from '../profile';
 import { hasGoal } from '../../data/profile';
 import { formatLoad, fromDisplay, toDisplay } from '../../engine/units';
+import { e1rmSeries } from '../../engine/records';
+import { RecordsTab } from '../progress/RecordsTab';
 
-type Tab = 'exercises' | 'body' | 'pullup' | 'weeks';
+type Tab = 'exercises' | 'records' | 'body' | 'pullup' | 'weeks';
 const TABS: { id: Tab; label: string }[] = [
   { id: 'exercises', label: 'Exercises' },
+  { id: 'records', label: 'Records' },
   { id: 'body', label: 'Body weight' },
   { id: 'pullup', label: 'Pull-ups' },
   { id: 'weeks', label: 'Weeks' },
@@ -69,6 +72,8 @@ export function ProgressScreen() {
         <p className="muted">Loading…</p>
       ) : tab === 'exercises' ? (
         <ExercisesTab data={data} />
+      ) : tab === 'records' ? (
+        <RecordsTab data={data} />
       ) : tab === 'body' ? (
         <BodyTab data={data} onChange={() => setVersion((v) => v + 1)} />
       ) : tab === 'pullup' ? (
@@ -128,14 +133,27 @@ function ExercisesTab({ data }: { data: ProgressData }) {
 function ExerciseChart({ exercise, data }: { exercise: Exercise; data: ProgressData }) {
   const unit = useUnit();
   const bar = useBar();
-  const s = exerciseSeries(exerciseHistory(data.sessions, data.sets, exercise, unit, bar), exercise, unit, bar);
+  const [view, setView] = useState<'top' | 'e1rm'>('top');
+  const history = exerciseHistory(data.sessions, data.sets, exercise, unit, bar);
+  const top = exerciseSeries(history, exercise, unit, bar);
+  const e1rm = e1rmSeries(history, exercise, unit, bar);
+  const canEstimate = e1rm.points.length > 0;
+  const s = view === 'e1rm' && canEstimate ? e1rm : top;
   return (
-    <LineChart
-      title={`${exercise.name}: ${s.title.toLowerCase()}`}
-      unit={s.unit}
-      note={s.lowerIsBetter ? 'lower is better' : undefined}
-      series={[{ name: s.title, color: 'var(--series-1)', points: s.points.map((p) => ({ x: p.date, y: p.value, label: p.label })) }]}
-    />
+    <>
+      {canEstimate && (
+        <div className="segmented chart-switch">
+          <button type="button" className={s === top ? '' : 'secondary'} aria-pressed={s === top} onClick={() => setView('top')}>Heaviest weight</button>
+          <button type="button" className={s === e1rm ? '' : 'secondary'} aria-pressed={s === e1rm} onClick={() => setView('e1rm')}>Estimated 1RM</button>
+        </div>
+      )}
+      <LineChart
+        title={`${exercise.name}: ${s.title.toLowerCase()}`}
+        unit={s.unit}
+        note={s.lowerIsBetter ? 'lower is better' : s === e1rm ? 'estimated from your sets' : undefined}
+        series={[{ name: s.title, color: 'var(--series-1)', points: s.points.map((p) => ({ x: p.date, y: p.value, label: p.label })) }]}
+      />
+    </>
   );
 }
 

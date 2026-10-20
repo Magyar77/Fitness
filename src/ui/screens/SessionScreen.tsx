@@ -9,6 +9,8 @@ import { slotSummary, summarizeSets } from '../../engine/logging';
 import type { DecisionRecord, TargetDraft } from '../../engine/progression';
 import type { Discomfort, Exercise, SetLog, WorkoutSession, WorkoutTemplate } from '../../engine/model';
 import { DecisionCard } from '../logger/DecisionCard';
+import { RecordList } from '../progress/RecordsTab';
+import { sessionRecords, type PersonalRecord } from '../../engine/records';
 import { ExerciseCard } from '../logger/ExerciseCard';
 import { RestTimer } from '../logger/RestTimer';
 import { useBar, useUnit } from '../profile';
@@ -21,7 +23,10 @@ interface Loaded {
   last: Map<string, { date: string; text: string } | null>;
   decisions: DecisionRecord[];
   library: Exercise[];
+  records: PersonalRecord[];
 }
+
+const completedExerciseIds = (sets: SetLog[]) => sets.filter((s) => s.completed && !s.isWarmup).map((s) => s.exerciseId);
 
 const FATIGUE = ['Very easy', 'Easy', 'Normal', 'Hard', 'Exhausted'];
 
@@ -83,9 +88,17 @@ export function SessionScreen() {
         last.set(slot.slotKey, before ? { date: niceDate(before.session.date), text: summarizeSets(before.sets, sub ?? ex, unit, bar) } : null);
       }
       const library = session.status === 'in_progress' ? await allExercises(db) : [];
+      let records: PersonalRecord[] = [];
+      if (session.status === 'completed') {
+        const mine = [...new Set(completedExerciseIds(await db.sets.where('sessionId').equals(id).toArray()))];
+        const related = await db.sets.where('exerciseId').anyOf(mine).toArray();
+        const relatedSessions = (await db.sessions.bulkGet([...new Set(related.map((s) => s.sessionId))])).filter((s): s is WorkoutSession => !!s);
+        const byId = new Map((await allExercises(db)).filter((e) => mine.includes(e.id)).map((e) => [e.id, e]));
+        records = sessionRecords(id, byId, relatedSessions, related, unit, bar);
+      }
       const rows = (await db.sets.where('sessionId').equals(id).toArray()).sort((a, b) => a.setIndex - b.setIndex);
       const decisions = await db.decisions.where('basisSessionId').equals(id).toArray();
-      return { session, template, exercises, last, rows, decisions, library };
+      return { session, template, exercises, last, rows, decisions, library, records };
     })()
       .then(({ rows, ...loaded }) => {
         if (!alive) return;
@@ -166,7 +179,7 @@ export function SessionScreen() {
   if (error && !data) return <section className="screen"><p className="notice error">{error}</p><Link to="/today">← Today</Link></section>;
   if (!data) return <section className="screen"><p className="muted">Loading…</p></section>;
 
-  const { session, template, exercises, last, decisions, library } = data;
+  const { session, template, exercises, last, decisions, library, records } = data;
   const swappedTo = (slotKey: string) => {
     const sub = session.swaps?.[slotKey];
     return sub ? exercises.get(sub) : undefined;
@@ -185,6 +198,13 @@ export function SessionScreen() {
       </p>
       {error && <p className="notice error">{error}</p>}
 
+
+      {completed && records.length > 0 && (
+        <div className="card highlight">
+          <h2>New record{records.length === 1 ? '' : 's'}</h2>
+          <RecordList records={records} nameOf={(eid) => exercises.get(eid)?.name ?? library.find((e) => e.id === eid)?.name ?? eid} showDate={false} />
+        </div>
+      )}
 
       {completed && (
         <div className="card">

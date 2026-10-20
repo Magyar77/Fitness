@@ -168,17 +168,35 @@ export async function markBackedUp(db: FitnessDB, now = new Date()): Promise<voi
   await db.settings.put({ key: BACKUP_KEY, value: now.toISOString() });
 }
 
-/** A reminder once there is data and no backup in the last week. */
-export function backupDue(lastBackupAt: string | null, completedWorkouts: number, now: Date): { due: boolean; text: string } {
+const REMIND_AFTER_WORKOUTS = 5;
+
+/**
+ * A reminder once there is data: when there was never a backup, after a week, or after
+ * five workouts since the last one. Quiet when nothing new happened since the last backup.
+ */
+export function backupDue(lastBackupAt: string | null, completedWorkouts: number, now: Date, sinceBackup = completedWorkouts): { due: boolean; text: string } {
   if (completedWorkouts === 0) return { due: false, text: '' };
   if (!lastBackupAt) return { due: true, text: "You haven't saved a backup yet. Your data lives only on this phone." };
   const days = Math.floor((now.getTime() - new Date(lastBackupAt).getTime()) / 86_400_000);
-  return days >= REMIND_AFTER_DAYS
-    ? { due: true, text: `Last backup was ${days} days ago. Save a fresh one to keep your history safe.` }
-    : { due: false, text: `Last backup ${days === 0 ? 'today' : `${days} day${days === 1 ? '' : 's'} ago`}.` };
+  const ago = days === 0 ? 'today' : `${days} day${days === 1 ? '' : 's'} ago`;
+  const workouts = `${sinceBackup} workout${sinceBackup === 1 ? '' : 's'}`;
+  if (sinceBackup === 0) return { due: false, text: `Last backup ${ago}; nothing new since.` };
+  if (days >= REMIND_AFTER_DAYS) return { due: true, text: `Last backup was ${ago}, with ${workouts} since. Save a fresh one to keep your history safe.` };
+  if (sinceBackup >= REMIND_AFTER_WORKOUTS) return { due: true, text: `${workouts} since your last backup (${ago}). Save a fresh one to keep them safe.` };
+  return { due: false, text: `Last backup ${ago}.` };
 }
 
 export async function backupReminder(db: FitnessDB, now = new Date()): Promise<{ due: boolean; text: string }> {
-  const [row, completed] = await Promise.all([db.settings.get(BACKUP_KEY), db.sessions.where('status').equals('completed').count()]);
-  return backupDue(typeof row?.value === 'string' ? row.value : null, completed, now);
+  const [row, sessions] = await Promise.all([db.settings.get(BACKUP_KEY), db.sessions.where('status').equals('completed').toArray()]);
+  const last = typeof row?.value === 'string' ? row.value : null;
+  const since = last ? sessions.filter((s) => (s.finishedAt ?? `${s.date}T23:59:59`) > last).length : sessions.length;
+  return backupDue(last, sessions.length, now, since);
+}
+
+/** Workouts on this device newer than a backup: restoring it would lose them. */
+export async function newerThanBackup(db: FitnessDB, file: BackupFile): Promise<number> {
+  const inBackup = new Set((file.tables.sessions as { id: string }[]).map((s) => s.id));
+  const latest = (file.tables.sessions as { date?: string }[]).reduce((d, s) => (s.date && s.date > d ? s.date : d), '');
+  const mine = await db.sessions.where('status').equals('completed').toArray();
+  return mine.filter((s) => !inBackup.has(s.id) && s.date >= latest).length;
 }

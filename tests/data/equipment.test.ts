@@ -61,8 +61,12 @@ describe('backup reminder', () => {
   it('stays quiet without data and nags after a week', () => {
     expect(backupDue(null, 0, now).due).toBe(false);
     expect(backupDue(null, 3, now)).toEqual({ due: true, text: "You haven't saved a backup yet. Your data lives only on this phone." });
-    expect(backupDue('2026-03-02T12:00:00Z', 3, now)).toMatchObject({ due: true, text: 'Last backup was 8 days ago. Save a fresh one to keep your history safe.' });
+    expect(backupDue('2026-03-02T12:00:00Z', 3, now)).toMatchObject({ due: true, text: 'Last backup was 8 days ago, with 3 workouts since. Save a fresh one to keep your history safe.' });
     expect(backupDue('2026-03-09T12:00:00Z', 3, now)).toEqual({ due: false, text: 'Last backup 1 day ago.' });
+  });
+  it('nags after five workouts, and not at all when nothing changed', () => {
+    expect(backupDue('2026-03-08T12:00:00Z', 20, now, 5)).toEqual({ due: true, text: '5 workouts since your last backup (2 days ago). Save a fresh one to keep them safe.' });
+    expect(backupDue('2026-02-01T12:00:00Z', 20, now, 0)).toEqual({ due: false, text: 'Last backup 37 days ago; nothing new since.' });
   });
   it('remembers the last backup', async () => {
     const db = await freshDb();
