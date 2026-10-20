@@ -97,7 +97,8 @@ export type PullRole = 'main' | 'light' | 'none';
 
 export interface WorkoutTemplate {
   id: string;
-  code: string; // "A".."E" for the program; free text for custom workouts
+  kind: 'program' | 'custom';
+  code: string; // "A".."E" for the program; unique id-like code for custom workouts
   name: string;
   focus: string;
   pullUpWork: string;
@@ -105,6 +106,8 @@ export interface WorkoutTemplate {
   demand: Demand;
   regions: Region[];
   pullRole: PullRole;
+  /** Contains loaded pulling (rows, pulldowns): back fatigue that hurts next-day pull-ups. */
+  pullVolume: boolean;
   gripLoad: boolean;
   /** Easy day: progress only if the same load still feels like the target RIR, smallest step. */
   easyDay: boolean;

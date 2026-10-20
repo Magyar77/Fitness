@@ -25,6 +25,17 @@ export function weekdayIndex(date: IsoDate): number {
   return (toUtc(date).getUTCDay() + 6) % 7;
 }
 
+export const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
+
+export function weekdayName(date: IsoDate): string {
+  return WEEKDAY_NAMES[weekdayIndex(date)]!;
+}
+
+/** The 7 dates of the week starting `weekStart`. */
+export function weekDates(weekStart: IsoDate): IsoDate[] {
+  return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+}
+
 /** Monday of the week containing `date` (weeks start on Monday). */
 export function weekStart(date: IsoDate): IsoDate {
   return addDays(date, -weekdayIndex(date));

@@ -44,6 +44,7 @@ function slot(
 
 const A: WorkoutTemplate = {
   id: 'v2-A',
+  kind: 'program',
   code: 'A',
   name: 'Push + pull-up practice',
   focus: 'Chest, shoulders, triceps',
@@ -52,6 +53,7 @@ const A: WorkoutTemplate = {
   demand: 'moderate',
   regions: ['upper'],
   pullRole: 'light',
+  pullVolume: false,
   gripLoad: true,
   easyDay: false,
   notes: [],
@@ -68,6 +70,7 @@ const A: WorkoutTemplate = {
 
 const B: WorkoutTemplate = {
   id: 'v2-B',
+  kind: 'program',
   code: 'B',
   name: 'Legs + core',
   focus: 'Squat, hinge, core',
@@ -76,6 +79,7 @@ const B: WorkoutTemplate = {
   demand: 'hard',
   regions: ['lower', 'core'],
   pullRole: 'none',
+  pullVolume: false,
   gripLoad: true,
   easyDay: false,
   notes: [],
@@ -91,6 +95,7 @@ const B: WorkoutTemplate = {
 
 const C: WorkoutTemplate = {
   id: 'v2-C',
+  kind: 'program',
   code: 'C',
   name: 'Pull + pull-ups, main day',
   focus: 'Back, biceps, grip',
@@ -99,6 +104,7 @@ const C: WorkoutTemplate = {
   demand: 'hard',
   regions: ['upper'],
   pullRole: 'main',
+  pullVolume: true,
   gripLoad: true,
   easyDay: false,
   notes: [],
@@ -118,6 +124,7 @@ const C: WorkoutTemplate = {
 
 const E: WorkoutTemplate = {
   id: 'v2-E',
+  kind: 'program',
   code: 'E',
   name: 'Easy lower + core + zone 2',
   focus: 'Light legs, core, zone 2 cardio, all RIR 3',
@@ -126,6 +133,7 @@ const E: WorkoutTemplate = {
   demand: 'easy',
   regions: ['lower', 'core'],
   pullRole: 'none',
+  pullVolume: false,
   gripLoad: false,
   easyDay: true,
   notes: [
@@ -145,6 +153,7 @@ const E: WorkoutTemplate = {
 
 const D: WorkoutTemplate = {
   id: 'v2-D',
+  kind: 'program',
   code: 'D',
   name: 'Upper volume',
   focus: 'Chest, rows, shoulders, arms',
@@ -153,6 +162,7 @@ const D: WorkoutTemplate = {
   demand: 'moderate',
   regions: ['upper'],
   pullRole: 'light',
+  pullVolume: true,
   gripLoad: true,
   easyDay: false,
   notes: [],
