@@ -1,0 +1,176 @@
+import { useEffect, useRef, useState } from 'react';
+import { getDb } from '../../data/db';
+import { checkBackup, exportBackup, importBundle, restoreBackup } from '../../data/backup';
+import { bodyWeightCsv, setsCsv } from '../../data/csv';
+import { requestPersistence, storageStatus, type StorageStatus } from '../../data/storage';
+import { downloadText, localDate } from '../download';
+
+interface Counts {
+  sessions: number;
+  sets: number;
+  prescriptions: number;
+  bodyWeights: number;
+  weekPlans: number;
+}
+
+type Message = { kind: 'ok' | 'error'; text: string } | null;
+
+function count(n: number, word: string): string {
+  return `${n} ${word}${n === 1 ? '' : 's'}`;
+}
+
+function mb(bytes: number | null): string {
+  return bytes === null ? '?' : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+export function MoreScreen() {
+  const db = getDb();
+  const [status, setStatus] = useState<StorageStatus | null>(null);
+  const [counts, setCounts] = useState<Counts | null>(null);
+  const [message, setMessage] = useState<Message>(null);
+  const [busy, setBusy] = useState(false);
+  const [version, setVersion] = useState(0); // bump to reload counts after a change
+  const restoreInput = useRef<HTMLInputElement>(null);
+  const importInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void Promise.all([
+      storageStatus(),
+      db.sessions.count(),
+      db.sets.count(),
+      db.prescriptions.count(),
+      db.bodyWeights.count(),
+      db.weekPlans.count(),
+    ]).then(([s, sessions, sets, prescriptions, bodyWeights, weekPlans]) => {
+      if (!alive) return;
+      setStatus(s);
+      setCounts({ sessions, sets, prescriptions, bodyWeights, weekPlans });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [db, version]);
+
+  async function run(task: () => Promise<Message>) {
+    setBusy(true);
+    setMessage(null);
+    try {
+      setMessage(await task());
+    } catch (e) {
+      setMessage({ kind: 'error', text: `Something went wrong: ${(e as Error).message}` });
+    } finally {
+      setBusy(false);
+      setVersion((v) => v + 1);
+    }
+  }
+
+  const exportJson = () =>
+    run(async () => {
+      const backup = await exportBackup(db);
+      downloadText(`fitness-backup-${localDate()}.json`, JSON.stringify(backup), 'application/json');
+      return { kind: 'ok', text: 'Backup saved to your downloads. Keep a copy somewhere safe, such as Google Drive.' };
+    });
+
+  const exportCsv = () =>
+    run(async () => {
+      const [sessions, sets, weights, custom] = await Promise.all([db.sessions.toArray(), db.sets.toArray(), db.bodyWeights.toArray(), db.exercises.toArray()]);
+      downloadText(`fitness-sets-${localDate()}.csv`, setsCsv(sessions, sets, new Map(custom.map((e) => [e.id, e.name]))), 'text/csv');
+      downloadText(`fitness-bodyweight-${localDate()}.csv`, bodyWeightCsv(weights), 'text/csv');
+      return { kind: 'ok', text: 'Two CSV files saved: sets and body weight.' };
+    });
+
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>, mode: 'restore' | 'import') {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    await run(async () => {
+      let raw: unknown;
+      try {
+        raw = JSON.parse(await file.text());
+      } catch {
+        return { kind: 'error', text: `${file.name} is not a valid JSON file. Nothing was changed.` };
+      }
+      if (mode === 'restore') {
+        const { file: backup, problems } = checkBackup(raw);
+        if (!backup) return { kind: 'error', text: `Backup rejected, nothing was changed:\n${problems.slice(0, 8).join('\n')}` };
+        const sessions = backup.tables.sessions.length;
+        if (!window.confirm(`Replace ALL data on this device with this backup (${count(sessions, 'workout')}, exported ${backup.exportedAt.slice(0, 10)})?`)) {
+          return { kind: 'ok', text: 'Restore cancelled. Nothing was changed.' };
+        }
+        const r = await restoreBackup(db, raw);
+        return r.ok
+          ? { kind: 'ok', text: `Restored from ${file.name}.` }
+          : { kind: 'error', text: `Backup rejected, nothing was changed:\n${r.problems.slice(0, 8).join('\n')}` };
+      }
+      const r = await importBundle(db, raw);
+      if (!r.ok) return { kind: 'error', text: `Import rejected, nothing was changed:\n${r.problems.slice(0, 8).join('\n')}` };
+      const { added, skipped } = r.report;
+      const total = (o: Record<string, number>) => Object.values(o).reduce((a, b) => a + b, 0);
+      return {
+        kind: 'ok',
+        text: `Imported ${count(added.sessions ?? 0, 'workout')}, ${count(added.sets ?? 0, 'set')}, ${count(added.prescriptions ?? 0, 'target')}, ${count(added.bodyWeights ?? 0, 'body weight')}.${total(skipped) ? ` ${count(total(skipped), 'record')} already here ${total(skipped) === 1 ? 'was' : 'were'} left unchanged.` : ''}`,
+      };
+    });
+  }
+
+  const persist = () =>
+    run(async () => {
+      const granted = await requestPersistence();
+      return granted
+        ? { kind: 'ok', text: 'Storage is now persistent.' }
+        : { kind: 'error', text: 'The browser declined for now. Installing the app to the home screen usually allows it. Keep regular backups either way.' };
+    });
+
+  return (
+    <section className="screen">
+      <h1>More</h1>
+
+      {message && <p className={`notice ${message.kind}`} role="status">{message.text}</p>}
+
+      <div className="card">
+        <h2>Data on this device</h2>
+        {counts ? (
+          <p className="muted">
+            {count(counts.sessions, 'workout')} · {count(counts.sets, 'set')} · {count(counts.prescriptions, 'target')} · {count(counts.bodyWeights, 'body weight')} · {count(counts.weekPlans, 'week plan')}
+          </p>
+        ) : (
+          <p className="muted">Loading…</p>
+        )}
+        {status && (
+          <p className="muted">
+            Storage: {status.supported ? (status.persisted ? 'persistent ✓' : 'not persistent: the browser may clear it if space runs low') : 'status unavailable'}
+            {status.usageBytes !== null && ` · ${mb(status.usageBytes)} used`}
+          </p>
+        )}
+        {status?.supported && !status.persisted && (
+          <button type="button" onClick={persist} disabled={busy}>
+            Make storage persistent
+          </button>
+        )}
+      </div>
+
+      <div className="card">
+        <h2>Backup</h2>
+        <p className="muted">Your data lives only on this phone. Save a backup regularly.</p>
+        <div className="buttons">
+          <button type="button" onClick={exportJson} disabled={busy}>Export backup (JSON)</button>
+          <button type="button" className="secondary" onClick={() => restoreInput.current?.click()} disabled={busy}>Restore backup…</button>
+        </div>
+        <input ref={restoreInput} type="file" accept="application/json,.json" hidden onChange={(e) => void onFile(e, 'restore')} />
+      </div>
+
+      <div className="card">
+        <h2>Import data</h2>
+        <p className="muted">Adds records from a data file (e.g. your Weeks 1–2 history). Existing records are never overwritten.</p>
+        <button type="button" className="secondary" onClick={() => importInput.current?.click()} disabled={busy}>Import data file…</button>
+        <input ref={importInput} type="file" accept="application/json,.json" hidden onChange={(e) => void onFile(e, 'import')} />
+      </div>
+
+      <div className="card">
+        <h2>Export for spreadsheets</h2>
+        <button type="button" className="secondary" onClick={exportCsv} disabled={busy}>Export CSV</button>
+      </div>
+    </section>
+  );
+}

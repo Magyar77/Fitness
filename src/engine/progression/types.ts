@@ -88,6 +88,17 @@ export interface TargetDraft {
   text: string;
 }
 
+export type DecisionStatus = 'auto_applied' | 'pending' | 'accepted' | 'rejected' | 'overridden' | 'undone';
+
+/** A decision as stored: what happened to it, and which prescription it produced. */
+export interface DecisionRecord extends Decision {
+  id: string;
+  status: DecisionStatus;
+  createdAt: string;
+  prescriptionId?: string;
+  override?: TargetDraft;
+}
+
 export interface Decision {
   slotKey: string;
   linkGroup?: string;
