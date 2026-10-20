@@ -56,7 +56,7 @@ describe('database', () => {
   it('opens schema v1 and seeds Program v2 once, never overwriting it', async () => {
     const db = await freshDb();
     expect(db.verno).toBe(SCHEMA_VERSION);
-    expect((await db.programs.toArray()).map((p) => p.id)).toEqual([PROGRAM_V2.id]);
+    expect((await db.programs.toArray()).map((p) => p.id).sort()).toEqual([PROGRAM_V2.id, 'tpl-beginner-3', 'tpl-expert-5', 'tpl-intermediate-4']);
     await db.programs.update(PROGRAM_V2.id, { changeNote: 'kept' });
     await ensureSeeded(db);
     expect((await db.programs.get(PROGRAM_V2.id))?.changeNote).toBe('kept');
@@ -115,7 +115,7 @@ describe('backup and restore', () => {
     const empty = await exportBackup(await freshDb());
     await restoreBackup(db, JSON.parse(JSON.stringify(empty)));
     expect(await db.sessions.count()).toBe(0);
-    expect(await db.programs.count()).toBe(1);
+    expect(await db.programs.count()).toBe(4);
   });
 
   it('rejects corrupted or incomplete files and leaves current data untouched', async () => {

@@ -34,10 +34,13 @@ const REGION: Record<string, Region> = {
   'barbell-back-squat': L, 'romanian-deadlift': L, 'db-bulgarian-split-squat': L, 'leg-curl': L, 'leg-press': L,
   'db-walking-lunge': L, 'back-extension-45': L, 'standing-calf-raise': L,
   'hanging-knee-raise': K, 'hollow-body-hold': K, 'dead-bug': K, 'side-plank': K,
+  // Staples used by the ready-made programs.
+  'push-up': U, 'barbell-overhead-press': U, 'barbell-row': U,
+  'goblet-squat': L, 'deadlift': L, 'hip-thrust': L, 'plank': K,
 };
 
 /** Loaded pulling that tires the back for next-day pull-ups. */
-const PULL = new Set(['assisted-negative-pull-up', 'assisted-pull-up', 'pull-up', 'lat-pulldown', 'single-arm-db-row', 'seated-cable-row']);
+const PULL = new Set(['assisted-negative-pull-up', 'assisted-pull-up', 'pull-up', 'lat-pulldown', 'single-arm-db-row', 'seated-cable-row', 'barbell-row']);
 
 const PER_SIDE: Record<string, 'leg' | 'arm' | 'side'> = {
   'db-bulgarian-split-squat': 'leg', 'db-walking-lunge': 'leg', 'single-arm-db-row': 'arm', 'dead-bug': 'side', 'side-plank': 'side',
@@ -113,6 +116,14 @@ export const EXERCISES: Exercise[] = [
   // Cardio
   ex('bike-or-incline-walk', 'Bike or incline walk (zone 2)', 'cardio', 'duration', ['Easy, full sentences possible.']),
   ex('cycling', 'Cycling', 'cardio', 'duration', []),
+  // Staples used by the ready-made programs (cues: standard technique).
+  ex('push-up', 'Push-up', 'bodyweight', 'reps', ['Body in a straight line, chest to just above the floor.', 'Too hard? Hands on a bench.']),
+  ex('goblet-squat', 'Goblet squat', 'dumbbell_per_hand', 'reps', ['Hold one dumbbell at the chest, sit between the heels, chest up.'], { loadConvention: 'Weight of the one dumbbell.' }),
+  ex('barbell-overhead-press', 'Barbell overhead press', 'plates', 'reps', ['Glutes tight, bar from the collarbone to over the head, no leaning back.']),
+  ex('barbell-row', 'Barbell row', 'plates', 'reps', ['Hinge to ~45°, flat back, pull the bar to the lower ribs.']),
+  ex('deadlift', 'Deadlift', 'plates', 'reps', ['Bar over mid-foot, flat back, push the floor away, lock out with the glutes.']),
+  ex('hip-thrust', 'Hip thrust', 'plates', 'reps', ['Upper back on a bench, chin tucked, squeeze the glutes at the top.']),
+  ex('plank', 'Plank', 'bodyweight', 'time', ['Elbows under shoulders, straight line from head to heels.']),
 ];
 
 export const EXERCISES_BY_ID: ReadonlyMap<string, Exercise> = new Map(EXERCISES.map((e) => [e.id, e]));

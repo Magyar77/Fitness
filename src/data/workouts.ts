@@ -8,9 +8,20 @@ import { activePrescription, performancesFor, progressionKeys, type SlotPerforma
 import { PROGRAM_V2_ID } from '../engine/program/programV2';
 import type { FitnessDB } from './db';
 
+/** "Just log workouts": no program, only your own workouts. */
+export const NO_PROGRAM: ProgramVersion = {
+  id: 'none', label: 'No program', parentId: null, createdAt: '2026-10-20', source: 'user_edit', isOriginal: false,
+  changeNote: 'Logging your own workouts without a program.', canonicalOrder: [], notes: [], pullUpMilestones: [], templates: [],
+};
+
+export async function activateProgram(db: FitnessDB, programId: string): Promise<void> {
+  await db.settings.put({ key: 'activeProgramId', value: programId });
+}
+
 export async function currentProgram(db: FitnessDB): Promise<ProgramVersion> {
   const settings = await db.settings.get('activeProgramId');
   const id = typeof settings?.value === 'string' ? settings.value : PROGRAM_V2_ID;
+  if (id === NO_PROGRAM.id) return NO_PROGRAM;
   const program = await db.programs.get(id);
   if (!program) throw new Error(`Program ${id} is missing`);
   return program;

@@ -24,7 +24,7 @@ function draft(over: Partial<WorkoutDraft> = {}): WorkoutDraft {
 describe('library metadata', () => {
   it('gives every non-cardio exercise a region and marks loaded pulling', () => {
     expect(EXERCISES.filter((e) => e.measure !== 'duration' && !e.region).map((e) => e.id)).toEqual([]);
-    expect(EXERCISES.filter((e) => e.pull).map((e) => e.id).sort()).toEqual(['assisted-negative-pull-up', 'assisted-pull-up', 'lat-pulldown', 'pull-up', 'seated-cable-row', 'single-arm-db-row']);
+    expect(EXERCISES.filter((e) => e.pull).map((e) => e.id).sort()).toEqual(['assisted-negative-pull-up', 'assisted-pull-up', 'barbell-row', 'lat-pulldown', 'pull-up', 'seated-cable-row', 'single-arm-db-row']);
   });
 });
 
@@ -102,5 +102,16 @@ describe('custom workouts', () => {
     expect(t2.slots[1]!.slotKey).toBe(t.slots[0]!.slotKey);
     expect(t.slots.map((s) => s.slotKey)).not.toContain(t2.slots[2]!.slotKey);
     expect(t2.slots.some((s) => s.supersetGroup)).toBe(false);
+  });
+});
+
+describe('max holds in custom and program workouts', () => {
+  it('round-trips a dead hang "2 × max" and progresses it as a max hang', () => {
+    const d: WorkoutDraft = { name: 'Grip', demand: 'easy', notes: '', slots: [{ ...defaultSlot(ex('dead-hang')), sets: 2, maxEffort: true, min: 0, max: 0 }] };
+    expect(validateWorkout(d, EXERCISES_BY_ID, [])).toEqual([]);
+    const t = buildWorkout(d, EXERCISES_BY_ID, ids('X-max'));
+    expect(t.slots[0]).toMatchObject({ target: { kind: 'max_time' }, rule: { id: 'max_hang' } });
+    expect(formatSetsReps(t.slots[0]!)).toBe('2 × max');
+    expect(toDraft(t, () => null).slots[0]).toMatchObject({ maxEffort: true, min: 20, max: 40 });
   });
 });

@@ -2,15 +2,14 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getDb } from '../../data/db';
 import { allExercises, archiveWorkout, customWorkouts, duplicateWorkout, scheduleWorkout } from '../../data/custom';
-import { currentProgram, inProgressSession, startSession } from '../../data/workouts';
-import { slotSummary } from '../../engine/logging';
-import type { Exercise, ProgramVersion, WorkoutTemplate } from '../../engine/model';
+import { inProgressSession, startSession } from '../../data/workouts';
+import type { Exercise, WorkoutTemplate } from '../../engine/model';
 import type { ScheduleWarning } from '../../engine/scheduling';
 import { niceDate, today } from '../dates';
 import { ExerciseForm } from '../workouts/ExerciseForm';
+import { ProgramCard } from '../workouts/ProgramCard';
 
 interface Loaded {
-  program: ProgramVersion;
   mine: WorkoutTemplate[];
   exercises: Exercise[];
   busy: boolean; // a workout is in progress
@@ -30,8 +29,8 @@ export function WorkoutsScreen() {
 
   useEffect(() => {
     let alive = true;
-    Promise.all([currentProgram(db), customWorkouts(db), allExercises(db), inProgressSession(db)]).then(([program, mine, exercises, open]) => {
-      if (alive) setData({ program, mine, exercises, busy: !!open });
+    Promise.all([customWorkouts(db), allExercises(db), inProgressSession(db)]).then(([mine, exercises, open]) => {
+      if (alive) setData({ mine, exercises, busy: !!open });
     });
     return () => {
       alive = false;
@@ -70,8 +69,10 @@ export function WorkoutsScreen() {
       <h1>Workouts</h1>
       {message && <p className={`notice ${message.kind}`}>{message.text}</p>}
 
+      <ProgramCard onChanged={refresh} />
+
       <div className="card">
-        <h2>Your workouts</h2>
+        <h2>Extra workouts</h2>
         {data.mine.length === 0 && <p className="muted">Create extra workouts for days outside the program. They never change it.</p>}
         {data.mine.map((t) => (
           <div key={t.code} className="mine">
@@ -115,25 +116,6 @@ export function WorkoutsScreen() {
         ))}
         {data.busy && <p className="muted small">Finish the workout in progress before starting another.</p>}
         <Link to="/workouts/new" className="button-link">+ New workout</Link>
-      </div>
-
-      <div className="card">
-        <h2>{data.program.label} (original)</h2>
-        <p className="muted small">Read-only. Weekly targets adapt; the program itself stays as written.</p>
-        {data.program.templates.map((t) => (
-          <details key={t.code}>
-            <summary>{t.code} · {t.name}</summary>
-            <ol className="program-list">
-              {t.slots.map((s) => (
-                <li key={s.slotKey}>
-                  {s.name}
-                  <span className="muted small"> · {slotSummary(s)}</span>
-                  {s.notes.length > 0 && <span className="muted small"> · {s.notes.join('; ')}</span>}
-                </li>
-              ))}
-            </ol>
-          </details>
-        ))}
       </div>
 
       <div className="card">

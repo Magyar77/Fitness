@@ -65,20 +65,11 @@ export async function draftOf(db: FitnessDB, t: WorkoutTemplate, on: IsoDate): P
  * Creates or updates a custom workout. A changed starting weight is recorded as a new
  * target from `today`; the program and past sessions are untouched.
  */
-export async function saveWorkout(
-  db: FitnessDB,
-  draft: WorkoutDraft,
-  today: IsoDate,
-  existing?: WorkoutTemplate,
-): Promise<{ ok: true; workout: WorkoutTemplate } | { ok: false; problems: string[] }> {
-  const exercises = await exerciseMap(db);
-  const problems = validateWorkout(draft, exercises, await customWorkouts(db), existing?.code);
-  if (problems.length) return { ok: false, problems };
-
-  const code = existing?.code ?? `X-${shortId()}`;
-  const workout = buildWorkout(draft, exercises, { id: existing?.id ?? code, code, newSlotKey: () => `${code}-${shortId()}` });
-  if (existing?.archived) workout.archived = true;
-
+/**
+ * New targets for starting weights entered in a workout draft (only where they differ from
+ * the current target). Shared by custom workouts and program workouts.
+ */
+export async function startingTargets(db: FitnessDB, workout: WorkoutTemplate, draft: WorkoutDraft, exercises: ReadonlyMap<string, Exercise>, today: IsoDate): Promise<Prescription[]> {
   const prescriptions = await db.prescriptions.toArray();
   const { unit } = await getProfile(db);
   const added: Prescription[] = [];
@@ -101,6 +92,24 @@ export async function saveWorkout(
       sourceRef: `Starting weight set in "${workout.name}"`,
     });
   });
+  return added;
+}
+
+export async function saveWorkout(
+  db: FitnessDB,
+  draft: WorkoutDraft,
+  today: IsoDate,
+  existing?: WorkoutTemplate,
+): Promise<{ ok: true; workout: WorkoutTemplate } | { ok: false; problems: string[] }> {
+  const exercises = await exerciseMap(db);
+  const problems = validateWorkout(draft, exercises, await customWorkouts(db), existing?.code);
+  if (problems.length) return { ok: false, problems };
+
+  const code = existing?.code ?? `X-${shortId()}`;
+  const workout = buildWorkout(draft, exercises, { id: existing?.id ?? code, code, newSlotKey: () => `${code}-${shortId()}` });
+  if (existing?.archived) workout.archived = true;
+
+  const added = await startingTargets(db, workout, draft, exercises, today);
 
   await db.transaction('rw', db.templates, db.prescriptions, async () => {
     await db.templates.put(workout);

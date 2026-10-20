@@ -121,6 +121,8 @@ export interface SlotDraft {
   /** Starting load (kg, or kg of assistance). Becomes a target, not part of the workout. */
   targetKg: number | null;
   supersetWithPrevious: boolean;
+  /** Timed holds only: "as long as you can" (e.g. dead hang 2 × max) instead of a range. */
+  maxEffort?: boolean;
 }
 
 export interface WorkoutDraft {
@@ -161,7 +163,8 @@ export function validateWorkout(d: WorkoutDraft, exercises: ReadonlyMap<string, 
     if (!e) return problems.push(`${where}: unknown exercise.`);
     const whole = (v: number) => Number.isInteger(v) && v >= 1;
     if (e.measure !== 'duration' && (!whole(s.sets) || s.sets > 10)) problems.push(`${where}: sets must be 1–10.`);
-    if (!(s.min > 0) || !(s.max >= s.min)) problems.push(`${where}: the ${unitOf(e)} range must go from low to high.`);
+    const maxHold = e.measure === 'time' && s.maxEffort;
+    if (!maxHold && (!(s.min > 0) || !(s.max >= s.min))) problems.push(`${where}: the ${unitOf(e)} range must go from low to high.`);
     if (e.measure === 'reps' && (!Number.isInteger(s.min) || !Number.isInteger(s.max))) problems.push(`${where}: reps must be whole numbers.`);
     if ((s.rirMin === null) !== (s.rirMax === null) || (s.rirMin !== null && (s.rirMin < 0 || s.rirMax! < s.rirMin || s.rirMax! > 5))) problems.push(`${where}: RIR must be 0–5, low to high, or left empty.`);
     if ((s.restMin === null) !== (s.restMax === null) || (s.restMin !== null && (s.restMin < 0 || s.restMax! < s.restMin))) problems.push(`${where}: rest must go from low to high, or be left empty.`);
@@ -171,8 +174,9 @@ export function validateWorkout(d: WorkoutDraft, exercises: ReadonlyMap<string, 
   return problems;
 }
 
-export function ruleFor(e: Exercise, s: Pick<SlotDraft, 'max'>): ProgressionRule {
+export function ruleFor(e: Exercise, s: Pick<SlotDraft, 'max' | 'maxEffort'>): ProgressionRule {
   if (e.measure === 'duration') return { id: 'none' };
+  if (e.measure === 'time' && s.maxEffort) return { id: 'max_hang' };
   if (e.measure === 'time') return { id: 'timed_hold', stepSec: 5 };
   if (e.measure === 'distance') return { id: 'distance_load' };
   if (e.loadType === 'assisted_machine') return { id: 'assisted_reps' };
@@ -183,7 +187,7 @@ export function ruleFor(e: Exercise, s: Pick<SlotDraft, 'max'>): ProgressionRule
 function targetFor(e: Exercise, s: SlotDraft): SlotTarget {
   switch (e.measure) {
     case 'time':
-      return { kind: 'time', minSec: s.min, maxSec: s.max };
+      return s.maxEffort ? { kind: 'max_time' } : { kind: 'time', minSec: s.min, maxSec: s.max };
     case 'distance':
       return { kind: 'distance', minM: s.min, maxM: s.max };
     case 'duration':
@@ -266,7 +270,7 @@ export function toDraft(t: WorkoutTemplate, targetKg: (slot: TemplateSlot) => nu
         : s.target.kind === 'time' ? [s.target.minSec, s.target.maxSec]
         : s.target.kind === 'distance' ? [s.target.minM, s.target.maxM]
         : s.target.kind === 'duration' ? [s.target.minMin, s.target.maxMin]
-        : [0, 0];
+        : [20, 40]; // max hold: keep a sensible range ready if the box is unticked
       return {
         slotKey: s.slotKey,
         exerciseId: s.exerciseId,
@@ -280,6 +284,7 @@ export function toDraft(t: WorkoutTemplate, targetKg: (slot: TemplateSlot) => nu
         notes: s.notes.join('\n'),
         targetKg: targetKg(s),
         supersetWithPrevious: i > 0 && !!s.supersetGroup && s.supersetGroup === t.slots[i - 1]!.supersetGroup,
+        ...(s.target.kind === 'max_time' ? { maxEffort: true } : {}),
       };
     }),
   };

@@ -1,8 +1,8 @@
 // Loading, proposing and saving a week plan.
 
 import { addDays, weekDates, type IsoDate } from '../engine/dates';
-import type { WeekPlan, WeekPlanEntry, WorkoutTemplate } from '../engine/model';
-import { DEFAULT_SCHEDULE_SETTINGS, generateWeek, validateWeek, type ScheduleProposal, type ScheduleWarning } from '../engine/scheduling';
+import type { ProgramVersion, WeekPlan, WeekPlanEntry, WorkoutTemplate } from '../engine/model';
+import { generateWeek, settingsForProgram, validateWeek, type ScheduleProposal, type ScheduleWarning } from '../engine/scheduling';
 import type { FitnessDB } from './db';
 
 export interface WeekContext {
@@ -60,7 +60,7 @@ export function earliestFor(weekStart: IsoDate, today: IsoDate): IsoDate {
 
 export function proposeWeek(
   ctx: WeekContext,
-  templates: WorkoutTemplate[],
+  program: ProgramVersion,
   restDays: IsoDate[],
   unavailableDays: IsoDate[],
   today: IsoDate,
@@ -69,11 +69,11 @@ export function proposeWeek(
     weekStart: ctx.weekStart,
     restDays,
     unavailableDays,
-    templates,
+    templates: program.templates,
     fixed: ctx.completed,
     earliest: earliestFor(ctx.weekStart, today),
     previousWeek: ctx.previousTail,
-    settings: DEFAULT_SCHEDULE_SETTINGS,
+    settings: settingsForProgram(program),
   });
 }
 

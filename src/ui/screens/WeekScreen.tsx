@@ -4,7 +4,7 @@ import { getDb } from '../../data/db';
 import { checkWeek, loadWeekContext, proposeWeek, saveWeek, unplaced, type WeekContext } from '../../data/weeks';
 import { customWorkouts } from '../../data/custom';
 import { exerciseMap } from '../../data/custom';
-import { currentProgram, startSession } from '../../data/workouts';
+import { currentProgram, findTemplate, startSession } from '../../data/workouts';
 import { WorkoutPreview } from '../week/WorkoutPreview';
 import { addDays, weekDates, weekStart as mondayOf, type IsoDate } from '../../engine/dates';
 import type { Exercise, Prescription, ProgramVersion, SetLog, WeekPlanEntry, WorkoutTemplate } from '../../engine/model';
@@ -50,7 +50,7 @@ export function WeekScreen() {
   const [selected, setSelected] = useState<Selection>(null);
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const navigate = useNavigate();
-  const [details, setDetails] = useState<{ prescriptions: Prescription[]; exercises: Map<string, Exercise>; sets: SetLog[] } | null>(null);
+  const [details, setDetails] = useState<{ prescriptions: Prescription[]; exercises: Map<string, Exercise>; sets: SetLog[]; sessionTemplates: Map<string, WorkoutTemplate> } | null>(null);
   /** Expanded workouts, keyed "date:code". */
   const [open, setOpen] = useState<Set<string>>(new Set());
 
@@ -60,8 +60,14 @@ export function WeekScreen() {
       .then(async ([c, p, m, prescriptions, exercises]) => {
         const doneIds = c.completed.map((e) => e.sessionId).filter((id): id is string => !!id);
         const sets = doneIds.length ? await db.sets.where('sessionId').anyOf(doneIds).toArray() : [];
+        // Completed days show the workout as it was, even after a program change.
+        const sessionTemplates = new Map<string, WorkoutTemplate>();
+        for (const session of await db.sessions.bulkGet(doneIds)) {
+          const t = session ? await findTemplate(db, session) : undefined;
+          if (session && t) sessionTemplates.set(session.id, t);
+        }
         if (!alive) return;
-        setDetails({ prescriptions, exercises, sets });
+        setDetails({ prescriptions, exercises, sets, sessionTemplates });
         setCtx(c);
         setProgram(p);
         setMine(m);
@@ -70,7 +76,7 @@ export function WeekScreen() {
         if (c.plan) {
           setDraft({ restDays: c.plan.restDays, unavailableDays: c.plan.unavailableDays, entries: fromPlan(c), notes: c.plan.notes, dirty: false, manual: false });
         } else {
-          const proposal = proposeWeek(c, p.templates, c.suggestedRest, [], now);
+          const proposal = proposeWeek(c, p, c.suggestedRest, [], now);
           setDraft({ restDays: c.suggestedRest, unavailableDays: [], entries: proposal.entries, notes: proposal.notes, dirty: true, manual: false });
         }
       })
@@ -96,7 +102,7 @@ export function WeekScreen() {
   const conflicts = warnings.filter((w) => w.severity === 'conflict');
 
   function replan(restDays: IsoDate[], unavailableDays: IsoDate[]) {
-    const p = proposeWeek(ctx!, templates, restDays, unavailableDays, now);
+    const p = proposeWeek(ctx!, program!, restDays, unavailableDays, now);
     setDraft({ restDays, unavailableDays, entries: p.entries, notes: p.notes, dirty: true, manual: false });
     setSelected(null);
   }
@@ -157,6 +163,11 @@ export function WeekScreen() {
     }
   }
 
+  const templateOf = (e: WeekPlanEntry) => (e.sessionId ? details?.sessionTemplates.get(e.sessionId) : undefined) ?? byCode.get(e.templateCode);
+  const entryName = (e: WeekPlanEntry) => {
+    const t = templateOf(e);
+    return t ? (t.kind === 'program' ? `${t.code} · ${t.name}` : t.name) : e.templateCode;
+  };
   const name = (code: string) => {
     const t = byCode.get(code);
     return t ? (t.kind === 'program' ? `${t.code} · ${t.name}` : t.name) : code;
@@ -211,7 +222,7 @@ export function WeekScreen() {
               {items.map(({ e, i }) => {
                 const key = `${e.date}:${e.templateCode}`;
                 const expanded = open.has(key);
-                const t = byCode.get(e.templateCode);
+                const t = templateOf(e);
                 return (
                   <div key={`${e.templateCode}${i}`} className="entry-block">
                     <div className="entry-wrap">
@@ -220,12 +231,12 @@ export function WeekScreen() {
                         className={`entry ${e.state} ${selected?.kind === 'entry' && selected.index === i ? 'selected' : ''}`}
                         disabled={e.state === 'done'}
                         onClick={() => setSelected({ kind: 'entry', index: i })}
-                        aria-label={`${name(e.templateCode)}, ${e.state === 'done' ? 'done' : 'planned'}. Tap to move or skip.`}
+                        aria-label={`${entryName(e)}, ${e.state === 'done' ? 'done' : 'planned'}. Tap to move or skip.`}
                       >
-                        <span>{name(e.templateCode)}</span>
+                        <span>{entryName(e)}</span>
                         <span className="entry-state">{e.state === 'done' ? '✓ done' : isPast(d) ? 'missed' : 'planned'}</span>
                       </button>
-                      <button type="button" className="icon expand" onClick={() => toggle(key)} aria-expanded={expanded} aria-label={`${expanded ? 'Hide' : 'Show'} exercises for ${name(e.templateCode)}`}>
+                      <button type="button" className="icon expand" onClick={() => toggle(key)} aria-expanded={expanded} aria-label={`${expanded ? 'Hide' : 'Show'} exercises for ${entryName(e)}`}>
                         {expanded ? '⌃' : '⌄'}
                       </button>
                     </div>

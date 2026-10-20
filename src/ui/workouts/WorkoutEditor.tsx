@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getDb } from '../../data/db';
 import { allExercises, draftOf, saveWorkout } from '../../data/custom';
+import { saveProgramWorkout } from '../../data/programs';
+import { currentProgram } from '../../data/workouts';
 import { defaultSlot, unitOf, validateWorkout, type SlotDraft, type WorkoutDraft } from '../../engine/custom';
 import type { Demand, Exercise, WorkoutTemplate } from '../../engine/model';
 import { NumberField } from '../logger/NumberField';
@@ -18,7 +20,8 @@ const DEMANDS: { value: Demand; label: string; help: string }[] = [
 
 const EMPTY: WorkoutDraft = { name: '', demand: 'moderate', notes: '', slots: [] };
 
-export function WorkoutEditor() {
+/** `custom`: your extra workouts. `program`: a workout of your active program (saves a new program version). */
+export function WorkoutEditor({ mode = 'custom' }: { mode?: 'custom' | 'program' }) {
   const { code } = useParams();
   const isNew = !code || code === 'new';
   const db = getDb();
@@ -36,7 +39,11 @@ export function WorkoutEditor() {
     let alive = true;
     (async () => {
       const list = await allExercises(db);
-      const t = isNew ? undefined : await db.templates.where('code').equals(code!).first();
+      const t = isNew
+        ? undefined
+        : mode === 'program'
+          ? (await currentProgram(db)).templates.find((x) => x.code === code)
+          : await db.templates.where('code').equals(code!).first();
       const d = t ? await draftOf(db, t, today()) : EMPTY;
       return { list, t, d };
     })().then(({ list, t, d }) => {
@@ -48,7 +55,7 @@ export function WorkoutEditor() {
     return () => {
       alive = false;
     };
-  }, [db, code, isNew]);
+  }, [db, code, isNew, mode]);
 
   if (!exercises) return <section className="screen"><p className="muted">Loading…</p></section>;
   if (!isNew && !existing) return <section className="screen"><p className="notice error">Workout not found.</p><Link to="/log">← Workouts</Link></section>;
@@ -72,7 +79,7 @@ export function WorkoutEditor() {
   async function save() {
     const check = validateWorkout(draft, byId, []);
     if (check.length) return setProblems(check);
-    const r = await saveWorkout(db, draft, today(), existing);
+    const r = mode === 'program' ? await saveProgramWorkout(db, draft, today(), existing?.code) : await saveWorkout(db, draft, today(), existing);
     if (!r.ok) return setProblems(r.problems);
     navigate('/log');
   }
@@ -82,8 +89,12 @@ export function WorkoutEditor() {
   return (
     <section className="screen editor">
       <Link to="/log" className="back">← Workouts</Link>
-      <h1>{isNew ? 'New workout' : `Edit ${existing!.name}`}</h1>
-      <p className="muted small">Your own workouts never change the original program.</p>
+      <h1>{isNew ? (mode === 'program' ? 'New program workout' : 'New workout') : `Edit ${existing!.name}`}</h1>
+      <p className="muted small">
+        {mode === 'program'
+          ? 'Saving creates a new version of your program; past workouts keep the version they used.'
+          : 'Your own workouts never change the original program.'}
+      </p>
 
       <div className="card form">
         <label className="field">
@@ -125,8 +136,8 @@ export function WorkoutEditor() {
             </header>
             <div className="set-row">
               {e.measure !== 'duration' && <NumberField label="sets" integer value={s.sets} onCommit={(v) => setSlot(i, { sets: v ?? 0 })} />}
-              <NumberField label={`min ${unit}`} integer={e.measure === 'reps'} value={s.min} onCommit={(v) => setSlot(i, { min: v ?? 0 })} />
-              <NumberField label={`max ${unit}`} integer={e.measure === 'reps'} value={s.max} onCommit={(v) => setSlot(i, { max: v ?? 0 })} />
+              {!(e.measure === 'time' && s.maxEffort) && <NumberField label={`min ${unit}`} integer={e.measure === 'reps'} value={s.min} onCommit={(v) => setSlot(i, { min: v ?? 0 })} />}
+              {!(e.measure === 'time' && s.maxEffort) && <NumberField label={`max ${unit}`} integer={e.measure === 'reps'} value={s.max} onCommit={(v) => setSlot(i, { max: v ?? 0 })} />}
               {hasLoad && <NumberField label={loadLabel} value={s.targetKg === null ? null : toDisplay(s.targetKg, weightUnit)} onCommit={(v) => setSlot(i, { targetKg: v === null ? null : fromDisplay(v, weightUnit) })} />}
             </div>
             <div className="set-row">
@@ -135,6 +146,12 @@ export function WorkoutEditor() {
               {e.measure !== 'duration' && <NumberField label="rest from (s)" integer value={s.restMin} onCommit={(v) => setSlot(i, { restMin: v })} />}
               {e.measure !== 'duration' && <NumberField label="rest to (s)" integer value={s.restMax} onCommit={(v) => setSlot(i, { restMax: v })} />}
             </div>
+            {e.measure === 'time' && (
+              <label className="flag">
+                <input type="checkbox" checked={!!s.maxEffort} onChange={(ev) => setSlot(i, { maxEffort: ev.target.checked })} />
+                Max hold: as long as you can (target = beat your best)
+              </label>
+            )}
             <input className="note" type="text" placeholder="Notes for this exercise (optional)" value={s.notes} onChange={(ev) => setSlot(i, { notes: ev.target.value })} />
             {i > 0 && (
               <label className="flag">

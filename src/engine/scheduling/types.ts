@@ -66,3 +66,13 @@ export interface ScheduleProposal {
   warnings: ScheduleWarning[];
   score: number;
 }
+
+/**
+ * Scheduling preferences for a program: its own if set; Program v2 keeps the coach's C-first
+ * rule (edited versions of it copy that setting); anything else follows its canonical order.
+ */
+export function settingsForProgram(program: { id: string; canonicalOrder: string[]; schedule?: ScheduleSettings }): ScheduleSettings {
+  if (program.schedule) return program.schedule;
+  if (program.id === 'program-v2') return DEFAULT_SCHEDULE_SETTINGS;
+  return { referenceOrder: program.canonicalOrder, keepPriority: program.canonicalOrder };
+}

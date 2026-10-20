@@ -12,6 +12,7 @@ import type {
 } from '../engine/model';
 import type { DecisionRecord } from '../engine/progression';
 import { PROGRAM_V2 } from '../engine/program/programV2';
+import { READY_MADE } from '../engine/program/templates';
 
 export interface SettingRow {
   key: string;
@@ -74,7 +75,9 @@ export class FitnessDB extends Dexie {
 /** Adds built-in program versions that are missing. Existing versions are never overwritten. */
 export async function ensureSeeded(db: FitnessDB): Promise<void> {
   await db.transaction('rw', db.programs, async () => {
-    if (!(await db.programs.get(PROGRAM_V2.id))) await db.programs.add(PROGRAM_V2);
+    for (const p of [PROGRAM_V2, ...READY_MADE]) {
+      if (!(await db.programs.get(p.id))) await db.programs.add(p);
+    }
   });
 }
 

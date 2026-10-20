@@ -40,7 +40,7 @@ describe('week planning data', () => {
     const db = await freshDb();
     const ctx = await loadWeekContext(db, MON);
     expect(ctx.suggestedRest).toEqual([day(6)]);
-    const p = proposeWeek(ctx, PROGRAM_V2.templates, [day(5), day(6)], [], MON);
+    const p = proposeWeek(ctx, PROGRAM_V2, [day(5), day(6)], [], MON);
     expect(p.entries.map((e) => e.templateCode).join('')).toBe('CABED');
   });
 
@@ -55,7 +55,7 @@ describe('week planning data', () => {
     const c = await done(db, 'C', day(0));
     const ctx = await loadWeekContext(db, MON);
     expect(ctx.completed).toEqual([{ date: day(0), templateCode: 'C', origin: 'manual', state: 'done', sessionId: c }]);
-    const p = proposeWeek(ctx, PROGRAM_V2.templates, [day(5), day(6)], [], day(2)); // today = Wednesday
+    const p = proposeWeek(ctx, PROGRAM_V2, [day(5), day(6)], [], day(2)); // today = Wednesday
     expect(p.entries.map((e) => `${e.date.slice(8)}${e.templateCode}`)).toEqual([`${day(0).slice(8)}C`, `${day(2).slice(8)}A`, `${day(3).slice(8)}B`, `${day(4).slice(8)}D`]);
     expect(p.omitted.map((o) => o.templateCode)).toEqual(['E']); // Tuesday is past: one day short
   });
@@ -65,7 +65,7 @@ describe('week planning data', () => {
     await done(db, 'D', day(-1));
     const ctx = await loadWeekContext(db, MON);
     expect(ctx.previousTail.map((e) => e.templateCode)).toEqual(['D']);
-    const p = proposeWeek(ctx, PROGRAM_V2.templates, [day(6)], [], MON);
+    const p = proposeWeek(ctx, PROGRAM_V2, [day(6)], [], MON);
     expect(p.entries[0]!.date).not.toBe(MON); // C not right after Sunday's D
   });
 

@@ -146,6 +146,10 @@ export interface ProgramVersion {
   notes: string[];
   pullUpMilestones: PullUpMilestone[];
   templates: WorkoutTemplate[];
+  /** Weekly scheduling: preferred order and which workouts to keep when days are short. Default: canonicalOrder for both. */
+  schedule?: { referenceOrder: string[]; keepPriority: string[] };
+  /** Shown when choosing a ready-made program. */
+  about?: { level: 'beginner' | 'intermediate' | 'expert' | 'custom'; daysPerWeek: number; description: string };
 }
 
 // ---------------------------------------------------------------------------
