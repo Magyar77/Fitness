@@ -4,7 +4,7 @@
 import { daysBetween } from '../dates';
 import type { Range, SetLog, SlotTarget } from '../model';
 import { heavier, lighter, reduced, sameLoad } from './loads';
-import { formatLoad, type Unit } from '../units';
+import { barOffset, formatLoad, type Unit } from '../units';
 import {
   RULESET_VERSION,
   type Decision,
@@ -36,7 +36,8 @@ interface Ctx {
 
 // Set by evaluateSlot for the duration of one (synchronous) evaluation.
 let unit: Unit = 'kg';
-const kg = (v: number) => formatLoad(v, unit);
+let bar = 0; // added to barbell loads for people who count the bar
+const kg = (v: number) => formatLoad(v + bar, unit);
 const span = (r: { min: number; max: number }) => (r.min === r.max ? `${r.min}` : `${r.min}–${r.max}`);
 const list = (xs: (number | null | undefined)[]) => xs.map((x) => x ?? '?').join('/');
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -461,10 +462,12 @@ function guards(ctx: Ctx): GuardResult {
 
 export function evaluateSlot(input: EvaluateInput): Decision {
   unit = input.settings.unit ?? 'kg';
+  bar = barOffset(input.exercise, input.settings.barKg ?? null);
   try {
     return evaluate(input);
   } finally {
     unit = 'kg';
+    bar = 0;
   }
 }
 

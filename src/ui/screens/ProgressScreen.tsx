@@ -8,7 +8,7 @@ import type { Exercise } from '../../engine/model';
 import { LineChart } from '../charts/LineChart';
 import { NumberField } from '../logger/NumberField';
 import { niceDate, today } from '../dates';
-import { useProfile, useUnit } from '../profile';
+import { useBar, useProfile, useUnit } from '../profile';
 import { hasGoal } from '../../data/profile';
 import { formatLoad, fromDisplay, toDisplay } from '../../engine/units';
 
@@ -82,6 +82,7 @@ export function ProgressScreen() {
 
 function ExercisesTab({ data }: { data: ProgressData }) {
   const unit = useUnit();
+  const bar = useBar();
   const done = new Set(data.sessions.filter((s) => s.status === 'completed').map((s) => s.id));
   const withHistory = [...data.exercises.values()]
     .filter((e) => data.sets.some((s) => s.exerciseId === e.id && s.completed && done.has(s.sessionId)))
@@ -89,8 +90,8 @@ function ExercisesTab({ data }: { data: ProgressData }) {
   const [id, setId] = useState<string>(() => withHistory.find((e) => e.id === 'assisted-pull-up')?.id ?? withHistory[0]?.id ?? '');
   if (!withHistory.length) return <div className="card"><p className="muted">Finish a workout and your exercise history appears here.</p></div>;
   const exercise = data.exercises.get(id) ?? withHistory[0]!;
-  const history = exerciseHistory(data.sessions, data.sets, exercise, unit);
-  const series = exerciseSeries(history, exercise, unit);
+  const history = exerciseHistory(data.sessions, data.sets, exercise, unit, bar);
+  const series = exerciseSeries(history, exercise, unit, bar);
 
   return (
     <>
@@ -126,7 +127,8 @@ function ExercisesTab({ data }: { data: ProgressData }) {
 
 function ExerciseChart({ exercise, data }: { exercise: Exercise; data: ProgressData }) {
   const unit = useUnit();
-  const s = exerciseSeries(exerciseHistory(data.sessions, data.sets, exercise, unit), exercise, unit);
+  const bar = useBar();
+  const s = exerciseSeries(exerciseHistory(data.sessions, data.sets, exercise, unit, bar), exercise, unit, bar);
   return (
     <LineChart
       title={`${exercise.name}: ${s.title.toLowerCase()}`}

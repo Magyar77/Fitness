@@ -9,7 +9,7 @@ import type { Discomfort, Exercise, SetLog, WorkoutSession, WorkoutTemplate } fr
 import { DecisionCard } from '../logger/DecisionCard';
 import { ExerciseCard } from '../logger/ExerciseCard';
 import { RestTimer } from '../logger/RestTimer';
-import { useUnit } from '../profile';
+import { useBar, useUnit } from '../profile';
 import { clock, niceDate } from '../dates';
 
 interface Loaded {
@@ -48,6 +48,7 @@ export function SessionScreen() {
   const { id = '' } = useParams();
   const db = getDb();
   const unit = useUnit();
+  const bar = useBar();
   const navigate = useNavigate();
   const [data, setData] = useState<Loaded | null>(null);
   const [sets, setSets] = useState<SetLog[]>([]);
@@ -73,7 +74,7 @@ export function SessionScreen() {
         exercises.set(slot.exerciseId, ex);
         const perf = await lastPerformance(db, template, slot, session.id);
         const before = perf && perf.session.date <= session.date && perf.session.id !== session.id ? perf : null;
-        last.set(slot.slotKey, before ? { date: niceDate(before.session.date), text: summarizeSets(before.sets, ex, unit) } : null);
+        last.set(slot.slotKey, before ? { date: niceDate(before.session.date), text: summarizeSets(before.sets, ex, unit, bar) } : null);
       }
       const rows = (await db.sets.where('sessionId').equals(id).toArray()).sort((a, b) => a.setIndex - b.setIndex);
       const decisions = await db.decisions.where('basisSessionId').equals(id).toArray();
@@ -88,7 +89,7 @@ export function SessionScreen() {
     return () => {
       alive = false;
     };
-  }, [db, id, version, unit]);
+  }, [db, id, version, unit, bar]);
 
   function persist(promise: Promise<unknown>) {
     promise.catch((e: Error) => setError(`Not saved: ${e.message}`));
@@ -210,7 +211,7 @@ export function SessionScreen() {
               return (
                 <li key={slot.slotKey}>
                   <strong>{slot.name}</strong>
-                  <span className={sets.some((s) => s.slotKey === slot.slotKey && s.completed) ? '' : 'muted'}>{sets.some((s) => s.slotKey === slot.slotKey && s.completed) ? summarizeSets(sets.filter((s) => s.slotKey === slot.slotKey), ex, unit) : 'skipped'}</span>
+                  <span className={sets.some((s) => s.slotKey === slot.slotKey && s.completed) ? '' : 'muted'}>{sets.some((s) => s.slotKey === slot.slotKey && s.completed) ? summarizeSets(sets.filter((s) => s.slotKey === slot.slotKey), ex, unit, bar) : 'skipped'}</span>
                   <span className="muted small">Target: {snapshot.get(slot.slotKey) ?? '–'}</span>
                 </li>
               );

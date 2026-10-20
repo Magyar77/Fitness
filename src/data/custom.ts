@@ -9,7 +9,7 @@ import type { ScheduleWarning } from '../engine/scheduling';
 import type { FitnessDB } from './db';
 import { checkWeek, loadWeekContext } from './weeks';
 import { getProfile } from './profile';
-import { formatLoad } from '../engine/units';
+import { barOffset, formatLoad } from '../engine/units';
 import { currentProgram } from './workouts';
 
 const shortId = () => crypto.randomUUID().replace(/-/g, '').slice(0, 6);
@@ -71,7 +71,7 @@ export async function draftOf(db: FitnessDB, t: WorkoutTemplate, on: IsoDate): P
  */
 export async function startingTargets(db: FitnessDB, workout: WorkoutTemplate, draft: WorkoutDraft, exercises: ReadonlyMap<string, Exercise>, today: IsoDate): Promise<Prescription[]> {
   const prescriptions = await db.prescriptions.toArray();
-  const { unit } = await getProfile(db);
+  const { unit, barKg } = await getProfile(db);
   const added: Prescription[] = [];
   workout.slots.forEach((slot, i) => {
     const kg = draft.slots[i]!.targetKg;
@@ -85,7 +85,7 @@ export async function startingTargets(db: FitnessDB, workout: WorkoutTemplate, d
       effectiveFrom: today,
       ...(assisted ? { assistKg: kg } : { loadKg: kg }),
       ...(reps ? { repTargets: reps } : {}),
-      text: `${formatLoad(kg, unit)}${assisted ? ' assist' : ''}${reps ? `, ${slot.sets} × ${slot.target.kind === 'reps' ? `${slot.target.min}–${slot.target.max}` : ''}` : ''}`,
+      text: `${formatLoad(kg + barOffset(exercises.get(slot.exerciseId)!, barKg), unit)}${assisted ? ' assist' : ''}${reps ? `, ${slot.sets} × ${slot.target.kind === 'reps' ? `${slot.target.min}–${slot.target.max}` : ''}` : ''}`,
       status: 'active',
       quality: 'confirmed',
       source: 'user',

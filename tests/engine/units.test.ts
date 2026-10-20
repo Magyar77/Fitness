@@ -78,3 +78,33 @@ describe('program steps on pound equipment', () => {
     expect(run('B-01', 135, 8).next?.text).toBe('145 lb, 3 × 6–8'); // squat: +5 kg rule
   });
 });
+
+describe('counting the bar', () => {
+  const bench = EXERCISES_BY_ID.get('barbell-bench-press')!;
+  const legPress = EXERCISES_BY_ID.get('leg-press')!;
+  const curl = EXERCISES_BY_ID.get('barbell-curl')!;
+
+  it('adds the bar to barbell plates only, and round-trips typed totals', async () => {
+    const { shownLoad, storedLoad, barOffset } = await import('../../src/engine/units');
+    expect(shownLoad(40, bench, 20, 'kg')).toBe(60);
+    expect(storedLoad(60, bench, 20, 'kg')).toBe(40);
+    expect(storedLoad(15, bench, 20, 'kg')).toBe(0); // never below an empty bar
+    expect(shownLoad(fromDisplay(90, 'lb'), bench, fromDisplay(45, 'lb'), 'lb')).toBe(135);
+    expect([barOffset(legPress, 20), barOffset(curl, 20), barOffset(bench, null)]).toEqual([0, 0, 0]);
+  });
+
+  it('words summaries and recommendations as totals', () => {
+    const sets = logSets('s1', 'A-03', 'barbell-bench-press', times(4, { w: 40, r: 8, rir: 2 }));
+    expect(summarizeSets(sets, bench, 'kg', 20)).toBe('60 kg × 8/8/8/8 · RIR 2');
+    expect(summarizeSets(sets, bench, 'kg', null)).toBe('40 kg × 8/8/8/8 · RIR 2');
+    const slot = PROGRAM_V2.templates[0]!.slots.find((s) => s.slotKey === 'A-03')!;
+    const d = evaluateSlot({
+      slot, template: PROGRAM_V2.templates[0]!, exercise: bench,
+      equipment: { id: 'barbell-plates', name: 'plates', kind: 'step', stepKg: 2.5, note: '', quality: 'confirmed' },
+      current: null, history: [{ session: session('s1', '2026-03-03'), sets }],
+      settings: { ...DEFAULT_SETTINGS, barKg: 20 },
+    });
+    expect(d.next?.text).toBe('62.5 kg, 4 × 6–8');
+    expect(d.next?.loadKg).toBe(42.5); // stored as plates
+  });
+});

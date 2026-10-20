@@ -66,7 +66,7 @@ export async function evaluateSession(db: FitnessDB, sessionId: string, now = ne
   const program = template.kind === 'program' ? await currentProgram(db) : null;
   const allSlots: TemplateSlot[] = program ? program.templates.flatMap((t) => t.slots) : template.slots;
   const [sessions, prescriptions, equipment, profile] = await Promise.all([db.sessions.toArray(), db.prescriptions.toArray(), getEquipment(db), getProfile(db)]);
-  const settings = { ...DEFAULT_SETTINGS, unit: profile.unit };
+  const settings = { ...DEFAULT_SETTINGS, unit: profile.unit, barKg: profile.barKg };
 
   const records: DecisionRecord[] = [];
   const created: Prescription[] = [];

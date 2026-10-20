@@ -2,8 +2,8 @@ import { useState } from 'react';
 import type { Exercise, TemplateSlot } from '../../engine/model';
 import type { DecisionRecord, TargetDraft } from '../../engine/progression';
 import { NumberField } from './NumberField';
-import { useUnit } from '../profile';
-import { formatLoad, fromDisplay, toDisplay } from '../../engine/units';
+import { useBar, useUnit } from '../profile';
+import { barOffset, formatLoad, shownLoad, storedLoad } from '../../engine/units';
 
 const OUTCOME: Record<DecisionRecord['outcome'], { icon: string; label: string; cls: string }> = {
   increase: { icon: '↑', label: 'Progress', cls: 'up' },
@@ -77,6 +77,7 @@ export function DecisionCard({ decision: d, slot, exercise, onAccept, onReject, 
 
 function OverrideForm({ decision: d, slot, exercise, onSave, onCancel }: { decision: DecisionRecord; slot: TemplateSlot | undefined; exercise: Exercise | undefined; onSave: (t: TargetDraft) => void; onCancel: () => void }) {
   const unit = useUnit();
+  const bar = useBar();
   const base: Partial<TargetDraft> = d.next ?? {};
   const assisted = exercise?.loadType === 'assisted_machine';
   const weighted = !!exercise && !assisted && !['bodyweight', 'cardio'].includes(exercise.loadType);
@@ -86,7 +87,7 @@ function OverrideForm({ decision: d, slot, exercise, onSave, onCancel }: { decis
   const sets = slot?.sets ?? 1;
 
   const startKg = assisted ? base.assistKg : base.loadKg;
-  const [load, setLoad] = useState<number | null>(typeof startKg === 'number' ? toDisplay(startKg, unit) : null);
+  const [load, setLoad] = useState<number | null>(typeof startKg === 'number' && exercise ? shownLoad(startKg, exercise, bar, unit) : null);
   const [repCount, setRepCount] = useState<number | null>(base.repTargets?.[0] ?? null);
   const [seconds, setSeconds] = useState<number | null>(base.timeSec ?? null);
   const [metres, setMetres] = useState<number | null>(base.distanceM ?? null);
@@ -95,10 +96,10 @@ function OverrideForm({ decision: d, slot, exercise, onSave, onCancel }: { decis
     const draft: TargetDraft = { text: '' };
     const parts: string[] = [];
     if ((weighted || assisted) && load !== null) {
-      const kg = fromDisplay(load, unit);
+      const kg = storedLoad(load, exercise!, bar, unit);
       if (assisted) draft.assistKg = kg;
       else draft.loadKg = kg;
-      parts.push(`${formatLoad(kg, unit)}${assisted ? ' assist' : ''}`);
+      parts.push(`${formatLoad(kg + barOffset(exercise!, bar), unit)}${assisted ? ' assist' : ''}`);
     }
     if (reps && repCount !== null) {
       draft.repTargets = Array(sets).fill(repCount);

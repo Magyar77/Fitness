@@ -4,7 +4,7 @@
 import { addDays, weekStart, type IsoDate } from './dates';
 import type { BodyWeightEntry, Exercise, Prescription, SetLog, WeekPlan, WorkoutSession } from './model';
 import { summarizeSets } from './logging';
-import { formatLoad, toDisplay, type Unit } from './units';
+import { barOffset, formatLoad, toDisplay, type Unit } from './units';
 
 const round1 = (v: number) => Math.round(v * 10) / 10;
 
@@ -20,7 +20,7 @@ export interface HistoryEntry {
 }
 
 /** Completed sessions that include completed sets of this exercise, oldest first. */
-export function exerciseHistory(sessions: WorkoutSession[], sets: SetLog[], exercise: Exercise, unit: Unit = 'kg'): HistoryEntry[] {
+export function exerciseHistory(sessions: WorkoutSession[], sets: SetLog[], exercise: Exercise, unit: Unit = 'kg', barKg: number | null = null): HistoryEntry[] {
   const byId = new Map(sessions.filter((s) => s.status === 'completed').map((s) => [s.id, s]));
   const grouped = new Map<string, SetLog[]>();
   for (const s of sets) {
@@ -31,7 +31,7 @@ export function exerciseHistory(sessions: WorkoutSession[], sets: SetLog[], exer
     .map(([id, list]) => {
       const session = byId.get(id)!;
       const ordered = list.sort((a, b) => (a.slotKey ?? '').localeCompare(b.slotKey ?? '') || a.setIndex - b.setIndex);
-      return { date: session.date, sessionId: id, templateCode: session.templateCode, sets: ordered, summary: summarizeSets(ordered, exercise, unit) };
+      return { date: session.date, sessionId: id, templateCode: session.templateCode, sets: ordered, summary: summarizeSets(ordered, exercise, unit, barKg) };
     })
     .sort((a, b) => a.date.localeCompare(b.date) || a.sessionId.localeCompare(b.sessionId));
 }
@@ -69,8 +69,9 @@ export function metricFor(e: Exercise): Metric {
 }
 
 /** One point per session: the heaviest load (least assistance, most reps, longest hold) and what was done with it. Load values are in `unit`. */
-export function exerciseSeries(history: HistoryEntry[], e: Exercise, unit: Unit = 'kg'): Series {
-  const kg = (v: number) => formatLoad(v, unit);
+export function exerciseSeries(history: HistoryEntry[], e: Exercise, unit: Unit = 'kg', barKg: number | null = null): Series {
+  const bar = barOffset(e, barKg);
+  const kg = (v: number) => formatLoad(v + bar, unit);
   const metric = metricFor(e);
   const points: SeriesPoint[] = [];
   for (const h of history) {
@@ -109,7 +110,7 @@ export function exerciseSeries(history: HistoryEntry[], e: Exercise, unit: Unit 
         label = metric === 'duration' ? `${value} min` : secs.map((t) => `${t} s`).join(', ');
       }
     }
-    if (value !== null) points.push({ date: h.date, sessionId: h.sessionId, value: metric === 'load' || metric === 'assist' ? toDisplay(value, unit) : value, label, work });
+    if (value !== null) points.push({ date: h.date, sessionId: h.sessionId, value: metric === 'load' ? toDisplay(value + bar, unit) : metric === 'assist' ? toDisplay(value, unit) : value, label, work });
   }
   const lowerIsBetter = metric === 'assist';
   // Best = best value; on a tie, more work at that value; on a further tie, the more recent.

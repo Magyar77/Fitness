@@ -25,20 +25,23 @@ afterEach(async () => {
 
 describe('profile', () => {
   it('starts new devices with setup pending, kg, no goals', async () => {
-    expect(await getProfile(await freshDb())).toEqual({ onboarded: false, unit: 'kg', goals: [] });
+    expect(await getProfile(await freshDb())).toEqual({ onboarded: false, unit: 'kg', goals: [], barKg: 20 });
   });
 
   it('keeps devices that already have workouts set up as before', async () => {
     const db = await freshDb();
     const id = await startSession(db, PROGRAM_V2.templates[0]!, PROGRAM_V2.id, '2026-03-03');
     await finishSession(db, id, { fatigue: null, notes: [] });
-    expect(await getProfile(db)).toEqual({ onboarded: true, unit: 'kg', goals: ['first-pull-up', 'lose-fat', 'build-muscle'] });
+    expect(await getProfile(db)).toEqual({ onboarded: true, unit: 'kg', goals: ['first-pull-up', 'lose-fat', 'build-muscle'], barKg: null });
   });
 
   it('saves and reads back', async () => {
     const db = await freshDb();
-    await saveProfile(db, { onboarded: true, unit: 'lb', goals: ['get-stronger'] });
-    expect(await getProfile(db)).toEqual({ onboarded: true, unit: 'lb', goals: ['get-stronger'] });
+    await saveProfile(db, { onboarded: true, unit: 'lb', goals: ['get-stronger'], barKg: 20.4117 });
+    expect(await getProfile(db)).toEqual({ onboarded: true, unit: 'lb', goals: ['get-stronger'], barKg: 20.4117 });
+    // A profile saved before the bar setting existed keeps "plates only".
+    await db.settings.put({ key: 'profile', value: { onboarded: true, unit: 'kg', goals: [] } });
+    expect((await getProfile(db)).barKg).toBeNull();
   });
 });
 

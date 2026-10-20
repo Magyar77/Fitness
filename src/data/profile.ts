@@ -18,17 +18,20 @@ export interface Profile {
   unit: Unit;
   /** In priority order. */
   goals: Goal[];
+  /** Barbell weights: the bar's weight when counting it (total), null when recording plates only. */
+  barKg: number | null;
 }
 
 const KEY = 'profile';
 
 /** Devices that had workouts before profiles existed keep their original setup. */
-const EXISTING_USER: Profile = { onboarded: true, unit: 'kg', goals: ['first-pull-up', 'lose-fat', 'build-muscle'] };
-const NEW_USER: Profile = { onboarded: false, unit: 'kg', goals: [] };
+const EXISTING_USER: Profile = { onboarded: true, unit: 'kg', goals: ['first-pull-up', 'lose-fat', 'build-muscle'], barKg: null };
+const NEW_USER: Profile = { onboarded: false, unit: 'kg', goals: [], barKg: 20 };
 
 export async function getProfile(db: FitnessDB): Promise<Profile> {
   const row = await db.settings.get(KEY);
-  if (row && typeof row.value === 'object' && row.value) return { ...NEW_USER, ...(row.value as Partial<Profile>) };
+  // Profiles saved before the bar setting existed recorded plates only: keep that.
+  if (row && typeof row.value === 'object' && row.value) return { ...NEW_USER, barKg: null, ...(row.value as Partial<Profile>) };
   return (await db.sessions.count()) > 0 ? EXISTING_USER : NEW_USER;
 }
 

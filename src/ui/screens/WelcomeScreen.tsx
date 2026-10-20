@@ -6,7 +6,7 @@ import { applyUnitDefaults } from '../../data/equipment';
 import { GOALS, type Goal } from '../../data/profile';
 import { chooseProgram, createOwnProgram, readyMade } from '../../data/programs';
 import type { DataBundle } from '../../engine/model';
-import type { Unit } from '../../engine/units';
+import { STANDARD_BAR_KG, STANDARD_BAR_LB_IN_KG, type Unit } from '../../engine/units';
 import { today } from '../dates';
 import { useProfile } from '../profile';
 
@@ -20,6 +20,7 @@ export function WelcomeScreen() {
   const [step, setStep] = useState<Step>('start');
   const [goals, setGoals] = useState<Goal[]>(profile.goals);
   const [unit, setUnit] = useState<Unit>(profile.unit);
+  const [countBar, setCountBar] = useState(true);
   const [imported, setImported] = useState<{ programId: string | null; text: string } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -61,7 +62,7 @@ export function WelcomeScreen() {
       if (choice.kind === 'none') await chooseProgram(db, 'none');
       if (choice.kind === 'own') await createOwnProgram(db, today());
       if (unit === 'lb') await applyUnitDefaults(db, 'lb');
-      await update({ onboarded: true, unit, goals });
+      await update({ onboarded: true, unit, goals, barKg: countBar ? (unit === 'lb' ? STANDARD_BAR_LB_IN_KG : STANDARD_BAR_KG) : null });
       navigate(choice.kind === 'own' ? '/log' : '/today', { replace: true });
     } finally {
       setBusy(false);
@@ -124,6 +125,14 @@ export function WelcomeScreen() {
               {(['kg', 'lb'] as Unit[]).map((u) => (
                 <button key={u} type="button" className={unit === u ? '' : 'secondary'} aria-pressed={unit === u} onClick={() => setUnit(u)}>{u}</button>
               ))}
+            </div>
+          </div>
+          <div className="card">
+            <h2>Barbell weights</h2>
+            <p className="muted small">When you load a barbell, do you count the bar? (Most people do: 2 × 20 kg plates on a 20 kg bar = 60 kg.)</p>
+            <div className="segmented">
+              <button type="button" className={countBar ? '' : 'secondary'} aria-pressed={countBar} onClick={() => setCountBar(true)}>Count the bar</button>
+              <button type="button" className={countBar ? 'secondary' : ''} aria-pressed={!countBar} onClick={() => setCountBar(false)}>Plates only</button>
             </div>
           </div>
           <div className="buttons">

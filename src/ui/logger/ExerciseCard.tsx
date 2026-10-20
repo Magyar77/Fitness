@@ -3,6 +3,8 @@ import type { Discomfort, Exercise, SetLog, TemplateSlot } from '../../engine/mo
 import { slotSummary } from '../../engine/logging';
 import { fieldsFor, perSideLabel } from './fields';
 import { SetRow } from './SetRow';
+import { useBar, useUnit } from '../profile';
+import { formatLoad, isPlatesBarbell } from '../../engine/units';
 
 interface Props {
   slot: TemplateSlot;
@@ -18,6 +20,13 @@ interface Props {
 }
 
 export function ExerciseCard({ slot, exercise, target, last, sets, discomfort, onChange, onAdd, onRemove, onDiscomfort }: Props) {
+  const unit = useUnit();
+  const bar = useBar();
+  const convention = isPlatesBarbell(exercise)
+    ? bar
+      ? `Total weight including the bar (${formatLoad(bar, unit)}).`
+      : 'Plates only, bar not counted.'
+    : exercise.loadConvention.replace('kg of assistance', `${unit} of assistance`);
   const [painOpen, setPainOpen] = useState(false);
   const [painNote, setPainNote] = useState('');
   const fields = fieldsFor(slot, exercise, target);
@@ -50,7 +59,7 @@ export function ExerciseCard({ slot, exercise, target, last, sets, discomfort, o
           <ul>
             {slot.notes.map((n) => <li key={n}>{n}</li>)}
             {exercise.cues.map((c) => <li key={c}>{c}</li>)}
-            {exercise.loadType !== 'bodyweight' && exercise.loadType !== 'cardio' && <li>{exercise.loadConvention}</li>}
+            {exercise.loadType !== 'bodyweight' && exercise.loadType !== 'cardio' && <li>{convention}</li>}
             {side && <li>Reps are {side}.</li>}
           </ul>
         </details>
@@ -58,7 +67,7 @@ export function ExerciseCard({ slot, exercise, target, last, sets, discomfort, o
 
       <div className="sets">
         {sets.map((s) => (
-          <SetRow key={s.id} set={s} fields={fields} onChange={onChange} onRemove={onRemove} />
+          <SetRow key={s.id} set={s} exercise={exercise} fields={fields} onChange={onChange} onRemove={onRemove} />
         ))}
       </div>
 

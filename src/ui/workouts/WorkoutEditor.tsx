@@ -9,8 +9,8 @@ import type { Demand, Exercise, WorkoutTemplate } from '../../engine/model';
 import { NumberField } from '../logger/NumberField';
 import { today } from '../dates';
 import { ExerciseForm } from './ExerciseForm';
-import { useUnit } from '../profile';
-import { fromDisplay, toDisplay } from '../../engine/units';
+import { useBar, useUnit } from '../profile';
+import { isPlatesBarbell, shownLoad, storedLoad } from '../../engine/units';
 
 const DEMANDS: { value: Demand; label: string; help: string }[] = [
   { value: 'easy', label: 'Easy', help: 'Recovery-level effort' },
@@ -26,6 +26,7 @@ export function WorkoutEditor({ mode = 'custom' }: { mode?: 'custom' | 'program'
   const isNew = !code || code === 'new';
   const db = getDb();
   const weightUnit = useUnit();
+  const bar = useBar();
   const navigate = useNavigate();
   const [exercises, setExercises] = useState<Exercise[] | null>(null);
   const [existing, setExisting] = useState<WorkoutTemplate | undefined>(undefined);
@@ -122,7 +123,7 @@ export function WorkoutEditor({ mode = 'custom' }: { mode?: 'custom' | 'program'
         const e = byId.get(s.exerciseId);
         if (!e) return null;
         const unit = unitOf(e);
-        const loadLabel = e.loadType === 'assisted_machine' ? `start assist ${weightUnit}` : `start ${weightUnit}`;
+        const loadLabel = e.loadType === 'assisted_machine' ? `start assist ${weightUnit}` : `start ${weightUnit}${isPlatesBarbell(e) ? (bar ? ' total' : ' plates') : ''}`;
         const hasLoad = !['bodyweight', 'cardio'].includes(e.loadType);
         return (
           <article key={`${s.slotKey}-${i}`} className="card slot-edit">
@@ -138,7 +139,7 @@ export function WorkoutEditor({ mode = 'custom' }: { mode?: 'custom' | 'program'
               {e.measure !== 'duration' && <NumberField label="sets" integer value={s.sets} onCommit={(v) => setSlot(i, { sets: v ?? 0 })} />}
               {!(e.measure === 'time' && s.maxEffort) && <NumberField label={`min ${unit}`} integer={e.measure === 'reps'} value={s.min} onCommit={(v) => setSlot(i, { min: v ?? 0 })} />}
               {!(e.measure === 'time' && s.maxEffort) && <NumberField label={`max ${unit}`} integer={e.measure === 'reps'} value={s.max} onCommit={(v) => setSlot(i, { max: v ?? 0 })} />}
-              {hasLoad && <NumberField label={loadLabel} value={s.targetKg === null ? null : toDisplay(s.targetKg, weightUnit)} onCommit={(v) => setSlot(i, { targetKg: v === null ? null : fromDisplay(v, weightUnit) })} />}
+              {hasLoad && <NumberField label={loadLabel} value={s.targetKg === null ? null : shownLoad(s.targetKg, e, bar, weightUnit)} onCommit={(v) => setSlot(i, { targetKg: v === null ? null : storedLoad(v, e, bar, weightUnit) })} />}
             </div>
             <div className="set-row">
               {e.measure === 'reps' && <NumberField label="RIR from" integer value={s.rirMin} onCommit={(v) => setSlot(i, { rirMin: v })} />}

@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import type { SetLog } from '../../engine/model';
+import type { Exercise, SetLog } from '../../engine/model';
 import type { Fields } from './fields';
 import { NumberField } from './NumberField';
-import { useUnit } from '../profile';
-import { fromDisplay, toDisplay } from '../../engine/units';
+import { useBar, useUnit } from '../profile';
+import { fromDisplay, isPlatesBarbell, shownLoad, storedLoad, toDisplay } from '../../engine/units';
 
 interface Props {
   set: SetLog;
+  exercise: Exercise;
   fields: Fields;
   onChange: (set: SetLog) => void;
   onRemove: (set: SetLog) => void;
@@ -14,10 +15,16 @@ interface Props {
 
 const RIR_OPTIONS = [0, 1, 2, 3, 4, 5];
 
-export function SetRow({ set, fields, onChange, onRemove }: Props) {
+export function SetRow({ set, exercise, fields, onChange, onRemove }: Props) {
   const unit = useUnit();
+  const bar = useBar();
   const shown = (kg: number | null | undefined) => (typeof kg === 'number' ? toDisplay(kg, unit) : kg);
   const stored = (v: number | null) => (v === null ? null : fromDisplay(v, unit));
+  // Barbell lifts: total including the bar, or plates only, as the person prefers.
+  const barbell = isPlatesBarbell(exercise);
+  const shownW = (kg: number | null | undefined) => (typeof kg === 'number' ? shownLoad(kg, exercise, bar, unit) : kg);
+  const storedW = (v: number | null) => (v === null ? null : storedLoad(v, exercise, bar, unit));
+  const weightLabel = barbell ? `${unit} ${bar ? 'total' : 'plates'}` : unit;
   const [more, setMore] = useState(false);
   const [watchStart, setWatchStart] = useState<number | null>(null);
   const patch = (p: Partial<SetLog>) => onChange({ ...set, ...p });
@@ -35,7 +42,7 @@ export function SetRow({ set, fields, onChange, onRemove }: Props) {
     <div className={`set ${set.completed ? 'done' : ''}`}>
       <div className="set-row">
         <span className="set-no">{set.setIndex}</span>
-        {fields.weight && <NumberField key={`w${set.id}`} label={unit} value={shown(set.weightKg)} onCommit={(v) => patch({ weightKg: stored(v) })} />}
+        {fields.weight && <NumberField key={`w${set.id}`} label={weightLabel} value={shownW(set.weightKg)} onCommit={(v) => patch({ weightKg: storedW(v) })} />}
         {fields.assist && <NumberField key={`a${set.id}`} label={`assist ${unit}`} value={shown(set.assistKg)} onCommit={(v) => patch({ assistKg: stored(v) })} />}
         {fields.reps && <NumberField key={`r${set.id}`} label="reps" integer value={set.reps} onCommit={(v) => patch({ reps: v })} />}
         {fields.seconds && (

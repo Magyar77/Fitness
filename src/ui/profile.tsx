@@ -49,3 +49,8 @@ export function useProfile(): ProfileContextValue {
 export function useUnit(): Unit {
   return useProfile().profile.unit;
 }
+
+/** Bar weight to count on barbell lifts (null = plates only). */
+export function useBar(): number | null {
+  return useProfile().profile.barKg;
+}

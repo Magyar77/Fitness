@@ -23,3 +23,30 @@ export function formatLoad(kg: number, unit: Unit): string {
 export function stepInKg(step: number, unit: Unit): number {
   return fromDisplay(step, unit);
 }
+
+// ---------------------------------------------------------------------------
+// Barbell convention. Barbell loads are stored as plates only (bar not counted); people
+// who count the bar see and type the total, with the bar added or subtracted here.
+
+/** Plates on a barbell, recorded without the bar (not the leg press sled or an EZ bar recorded as a total). */
+export function isPlatesBarbell(e: { loadType: string; equipmentProfileId?: string }): boolean {
+  return e.loadType === 'plates' && e.equipmentProfileId === 'barbell-plates';
+}
+
+/** kg to add when showing this exercise's load (0 when plates only or not a barbell). */
+export function barOffset(e: { loadType: string; equipmentProfileId?: string }, barKg: number | null): number {
+  return barKg && isPlatesBarbell(e) ? barKg : 0;
+}
+
+/** Stored plates → what the person sees. */
+export function shownLoad(storedKg: number, e: { loadType: string; equipmentProfileId?: string }, barKg: number | null, unit: Unit): number {
+  return toDisplay(storedKg + barOffset(e, barKg), unit);
+}
+
+/** What the person typed → stored plates (never below an empty bar). */
+export function storedLoad(typed: number, e: { loadType: string; equipmentProfileId?: string }, barKg: number | null, unit: Unit): number {
+  return Math.max(0, Math.round((fromDisplay(typed, unit) - barOffset(e, barKg)) * 10000) / 10000);
+}
+
+export const STANDARD_BAR_KG = 20;
+export const STANDARD_BAR_LB_IN_KG = 20.4117; // 45 lb

@@ -24,6 +24,8 @@ export interface ProgressionSettings {
   rirTolerance: number;
   /** Unit used in explanations and target text (loads are always stored in kg). */
   unit: Unit;
+  /** Bar weight to add when describing barbell loads (null = plates only). */
+  barKg: number | null;
 }
 
 export const DEFAULT_SETTINGS: ProgressionSettings = {
@@ -32,6 +34,7 @@ export const DEFAULT_SETTINGS: ProgressionSettings = {
   decreasePct: 5,
   rirTolerance: 1,
   unit: 'kg',
+  barKg: null,
 };
 
 /** One past performance of the slot (or of any slot in its link group). */
