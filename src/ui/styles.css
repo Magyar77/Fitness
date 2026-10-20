@@ -194,3 +194,30 @@ button.danger:not(.link) { background: #5a1f1f; border-color: #a33; color: #ffd0
 }
 .rest-bar.over { background: #2f6b47; }
 .rest-bar button { min-height: 36px; }
+
+/* ---- Recommendations ---- */
+.decision { border-top: 1px solid #2a313b; padding: 12px 0; }
+.decision:first-of-type { border-top: none; }
+.decision p { margin: 6px 0; }
+.decision .next { color: var(--text); }
+.decision-head { display: flex; align-items: center; gap: 8px; }
+.decision-head strong { flex: 1; }
+.decision .status { font-size: 12px; color: var(--muted); text-align: right; }
+.decision.pending .status { color: #ffd27a; font-weight: 600; }
+.outcome {
+  flex: 0 0 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  background: #2a313b;
+}
+.outcome.up { background: #1f5135; color: #8fe0ad; }
+.outcome.down { background: #5a3a12; color: #ffd27a; }
+.outcome.milestone { background: #24405a; color: var(--accent); }
+.outcome.blocked { background: #5a1f1f; color: #ffaaaa; }
+.override { display: grid; gap: 8px; margin-top: 8px; }
+.pending-list { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 6px; }
+.pending-list a { color: var(--text); }

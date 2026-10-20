@@ -169,7 +169,8 @@ function loadRule(ctx: Ctx, key: LoadKey): RuleResult {
     if (template.easyDay) reasons.push('easy_day');
     if (rirMissing) reasons.push('rir_missing');
     if (dataIssue) reasons.push('data_quality');
-    const effort = rir === null ? '' : rirMissing ? ' (RIR not recorded for every set)' : ` at RIR ${ws.map(rirText).join('/')}`;
+    const effort = rir === null || rirMissing ? '' : ` at RIR ${ws.map(rirText).join('/')}`;
+    const missingNote = rirMissing ? " RIR wasn't recorded for every set, so this needs your OK." : '';
     if (assisted && (to === null || to <= 0)) {
       return {
         outcome: 'milestone',
@@ -187,7 +188,7 @@ function loadRule(ctx: Ctx, key: LoadKey): RuleResult {
     return {
       outcome: 'increase',
       reasons,
-      explanation: `All ${prescribed} sets reached ${t.max} reps (top of ${span(t)})${effort}, so ${change} and the target restarts at ${t.min} reps.`,
+      explanation: `All ${prescribed} sets reached ${t.max} reps (top of ${span(t)})${effort}, so ${change} and the target restarts at ${t.min} reps.${missingNote}`,
       next: { ...(assisted ? { assistKg: to } : { loadKg: to }), repTargets: Array(prescribed).fill(t.min), text: `${toText[0]!.toUpperCase()}${toText.slice(1)}, ${rangeText}` },
       dataIssue: dataIssue || rirMissing,
     };

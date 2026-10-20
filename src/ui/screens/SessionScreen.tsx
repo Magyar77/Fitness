@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getDb } from '../../data/db';
 import { addDiscomfort, addSet, discardSession, exerciseById, finishSession, findTemplate, lastPerformance, removeSet, saveSet } from '../../data/workouts';
+import { acceptDecision, evaluateSession, overrideDecision, rejectDecision, undoDecision } from '../../data/recommendations';
 import { summarizeSets } from '../../engine/logging';
+import type { DecisionRecord, TargetDraft } from '../../engine/progression';
 import type { Discomfort, Exercise, SetLog, WorkoutSession, WorkoutTemplate } from '../../engine/model';
+import { DecisionCard } from '../logger/DecisionCard';
 import { ExerciseCard } from '../logger/ExerciseCard';
 import { RestTimer } from '../logger/RestTimer';
 import { clock, niceDate } from '../dates';
@@ -13,6 +16,7 @@ interface Loaded {
   template: WorkoutTemplate;
   exercises: Map<string, Exercise>;
   last: Map<string, { date: string; text: string } | null>;
+  decisions: DecisionRecord[];
 }
 
 const FATIGUE = ['Very easy', 'Easy', 'Normal', 'Hard', 'Exhausted'];
@@ -70,7 +74,8 @@ export function SessionScreen() {
         last.set(slot.slotKey, before ? { date: niceDate(before.session.date), text: summarizeSets(before.sets, ex) } : null);
       }
       const rows = (await db.sets.where('sessionId').equals(id).toArray()).sort((a, b) => a.setIndex - b.setIndex);
-      return { session, template, exercises, last, rows };
+      const decisions = await db.decisions.where('basisSessionId').equals(id).toArray();
+      return { session, template, exercises, last, rows, decisions };
     })()
       .then(({ rows, ...loaded }) => {
         if (!alive) return;
@@ -119,8 +124,18 @@ export function SessionScreen() {
   async function finish() {
     try {
       await finishSession(db, id, { fatigue, notes: notes.trim() ? [notes.trim()] : [] });
+      await evaluateSession(db, id);
       setRest(null);
       setFinishing(false);
+      setVersion((v) => v + 1);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
+  async function act(task: Promise<void>) {
+    try {
+      await task;
       setVersion((v) => v + 1);
     } catch (e) {
       setError((e as Error).message);
@@ -137,7 +152,7 @@ export function SessionScreen() {
   if (error && !data) return <section className="screen"><p className="notice error">{error}</p><Link to="/today">← Today</Link></section>;
   if (!data) return <section className="screen"><p className="muted">Loading…</p></section>;
 
-  const { session, template, exercises, last } = data;
+  const { session, template, exercises, last, decisions } = data;
   const completed = session.status === 'completed';
   const snapshot = new Map((session.prescriptionSnapshot ?? []).map((e) => [e.slotKey, e.text]));
   const doneCount = sets.filter((s) => s.completed).length;
@@ -152,9 +167,38 @@ export function SessionScreen() {
       </p>
       {error && <p className="notice error">{error}</p>}
 
-      {completed ? (
+
+      {completed && (
         <div className="card">
-          <h2>Workout saved</h2>
+          <h2>Workout saved · next time</h2>
+          {decisions.length === 0 && <p className="muted">No recommendations for this workout.</p>}
+          {decisions.some((d) => d.status === 'pending') && (
+            <p className="notice warn small">Some changes need your OK. Until then, the current targets stay.</p>
+          )}
+          {template.slots
+            .map((slot) => decisions.find((d) => d.slotKey === slot.slotKey))
+            .filter((d): d is DecisionRecord => !!d)
+            .map((d) => {
+              const slot = template.slots.find((s) => s.slotKey === d.slotKey);
+              return (
+                <DecisionCard
+                  key={d.id}
+                  decision={d}
+                  slot={slot}
+                  exercise={slot ? exercises.get(slot.exerciseId) : undefined}
+                  onAccept={() => void act(acceptDecision(db, d.id))}
+                  onReject={() => void act(rejectDecision(db, d.id))}
+                  onOverride={(draft: TargetDraft) => void act(overrideDecision(db, d.id, draft))}
+                  onUndo={() => void act(undoDecision(db, d.id))}
+                />
+              );
+            })}
+        </div>
+      )}
+
+      {completed && (
+        <div className="card">
+          <h2>What you did</h2>
           {session.fatigue !== null && <p className="muted">Fatigue: {session.fatigue}/5 ({FATIGUE[session.fatigue - 1]})</p>}
           {session.notes.map((n) => <p key={n} className="muted">"{n}"</p>)}
           <ul className="summary">
@@ -164,15 +208,16 @@ export function SessionScreen() {
               return (
                 <li key={slot.slotKey}>
                   <strong>{slot.name}</strong>
-                  <span>{summarizeSets(sets.filter((s) => s.slotKey === slot.slotKey), ex)}</span>
+                  <span className={sets.some((s) => s.slotKey === slot.slotKey && s.completed) ? '' : 'muted'}>{sets.some((s) => s.slotKey === slot.slotKey && s.completed) ? summarizeSets(sets.filter((s) => s.slotKey === slot.slotKey), ex) : 'skipped'}</span>
                   <span className="muted small">Target: {snapshot.get(slot.slotKey) ?? '–'}</span>
                 </li>
               );
             })}
           </ul>
-          <p className="muted small">Recommendations for next time arrive in the next update (M6).</p>
         </div>
-      ) : (
+      )}
+
+      {!completed && (
         <>
           {template.slots.map((slot) => {
             const ex = exercises.get(slot.exerciseId);

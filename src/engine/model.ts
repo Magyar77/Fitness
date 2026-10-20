@@ -155,7 +155,8 @@ export interface Prescription {
   requirePause?: boolean;
   /** Human-readable target as shown to the user. */
   text: string;
-  status: 'active' | 'pending';
+  /** `revoked`: undone by the user; kept for history, never current. */
+  status: 'active' | 'pending' | 'revoked';
   quality: DataQuality;
   source: 'import' | 'engine' | 'user';
   /** Where an imported target came from, e.g. "docx Next targets". */
