@@ -560,3 +560,13 @@ button.add { flex: 0 0 auto; min-height: 36px; padding: 0 14px; }
 .built-row { display: flex; align-items: center; gap: 6px; }
 .built-row::before { content: counter(built); width: 18px; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 13px; }
 a.button-link.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+
+/* Import */
+.import .steps { font-size: 14px; color: var(--text); }
+pre.prompt { white-space: pre-wrap; font-size: 12px; line-height: 1.45; background: var(--inset); padding: 10px; border-radius: var(--radius-sm); max-height: 260px; overflow-y: auto; }
+h2.sub { margin-top: 14px; }
+.name-map { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 10px; }
+.name-map li { display: grid; gap: 6px; padding: 10px; border-radius: var(--radius-sm); background: var(--inset); }
+.name-map li.unmatched { box-shadow: inset 3px 0 0 var(--warn); }
+.name-map select { width: 100%; min-height: 44px; padding: 0 10px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--input); }
+.problems ul { color: var(--warn); }

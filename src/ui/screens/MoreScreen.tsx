@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { getDb } from '../../data/db';
 import { backupReminder, checkBackup, exportBackup, importBundle, markBackedUp, restoreBackup } from '../../data/backup';
 import { EquipmentForm } from '../settings/EquipmentForm';
@@ -180,9 +181,12 @@ export function MoreScreen() {
       </div>
 
       <div className="card">
-        <h2>Import data</h2>
-        <p className="muted">Adds records from a data file (e.g. your Weeks 1–2 history). Existing records are never overwritten.</p>
-        <button type="button" className="secondary" onClick={() => importInput.current?.click()} disabled={busy}>Import data file…</button>
+        <h2>Bring in your training history</h2>
+        <p className="muted">From Strong, Hevy, a spreadsheet, or anything else via an AI chat. Existing records are never overwritten.</p>
+        <div className="buttons">
+          <Link to="/import" className="button-link primary">Import workouts</Link>
+          <button type="button" className="secondary" onClick={() => importInput.current?.click()} disabled={busy}>Personal Fitness data file…</button>
+        </div>
         <input ref={importInput} type="file" accept="application/json,.json" hidden onChange={(e) => void onFile(e, 'import')} />
       </div>
 

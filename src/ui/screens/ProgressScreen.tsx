@@ -114,8 +114,8 @@ function ExercisesTab({ data }: { data: ProgressData }) {
         <ul className="history">
           {[...history].reverse().map((h) => (
             <li key={h.sessionId}>
-              <Link to={`/session/${h.sessionId}`}>{niceDate(h.date)}</Link>
-              <span className="muted small"> {h.templateCode && h.templateCode.length <= 2 ? `· ${h.templateCode}` : ''}{data.sessions.find((s) => s.id === h.sessionId)?.flags.includes('legacyProgram') ? ' · old program, partial: not used for progression' : ''}</span>
+              {h.templateCode ? <Link to={`/session/${h.sessionId}`}>{niceDate(h.date)}</Link> : <strong>{niceDate(h.date)}</strong>}
+              <span className="muted small"> {h.templateCode && h.templateCode.length <= 2 ? `· ${h.templateCode}` : ''}{data.sessions.find((s) => s.id === h.sessionId)?.flags.includes('legacyProgram') ? ' · old program, partial: not used for progression' : ''}{!h.templateCode && data.sessions.find((s) => s.id === h.sessionId)?.flags.includes('imported') ? ' · imported' : ''}</span>
               <div>{h.summary}</div>
             </li>
           ))}

@@ -10,6 +10,7 @@ import { ProgressScreen } from './screens/ProgressScreen';
 import { WelcomeScreen } from './screens/WelcomeScreen';
 import { LibraryScreen } from './screens/LibraryScreen';
 import { BuilderScreen } from './screens/BuilderScreen';
+import { ImportScreen } from './screens/ImportScreen';
 import { WorkoutEditor } from './workouts/WorkoutEditor';
 
 const TABS = [
@@ -45,6 +46,7 @@ function Shell() {
             <Route path="/program/:code" element={<WorkoutEditor mode="program" />} />
             <Route path="/library" element={<LibraryScreen />} />
             <Route path="/build" element={<BuilderScreen />} />
+            <Route path="/import" element={<ImportScreen />} />
             <Route path="/progress" element={<ProgressScreen />} />
             <Route path="/more" element={<MoreScreen />} />
             <Route path="*" element={<Navigate to="/today" replace />} />
