@@ -53,7 +53,7 @@ afterEach(async () => {
 });
 
 describe('database', () => {
-  it('opens schema v1 and seeds Program v2 once, never overwriting it', async () => {
+  it('opens the current schema and seeds Program v2 once, never overwriting it', async () => {
     const db = await freshDb();
     expect(db.verno).toBe(SCHEMA_VERSION);
     expect((await db.programs.toArray()).map((p) => p.id).sort()).toEqual([PROGRAM_V2.id, 'tpl-beginner-3', 'tpl-expert-5', 'tpl-intermediate-4']);

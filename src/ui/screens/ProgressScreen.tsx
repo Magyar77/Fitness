@@ -13,13 +13,14 @@ import { hasGoal } from '../../data/profile';
 import { formatLoad, fromDisplay, toDisplay } from '../../engine/units';
 import { e1rmSeries } from '../../engine/records';
 import { RecordsTab } from '../progress/RecordsTab';
+import { BodyArea } from '../body/BodyArea';
 import { formatMinutes, sessionMinutes } from '../../engine/duration';
 
 type Tab = 'exercises' | 'records' | 'body' | 'pullup' | 'weeks';
 const TABS: { id: Tab; label: string }[] = [
   { id: 'exercises', label: 'Exercises' },
   { id: 'records', label: 'Records' },
-  { id: 'body', label: 'Body weight' },
+  { id: 'body', label: 'Body' },
   { id: 'pullup', label: 'Pull-ups' },
   { id: 'weeks', label: 'Weeks' },
 ];
@@ -76,7 +77,7 @@ export function ProgressScreen() {
       ) : tab === 'records' ? (
         <RecordsTab data={data} />
       ) : tab === 'body' ? (
-        <BodyTab data={data} onChange={() => setVersion((v) => v + 1)} />
+        <BodyArea data={data} onChange={() => setVersion((v) => v + 1)} weight={<BodyTab data={data} onChange={() => setVersion((v) => v + 1)} />} />
       ) : tab === 'pullup' ? (
         <PullUpTab data={data} />
       ) : (

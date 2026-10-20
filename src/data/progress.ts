@@ -4,12 +4,15 @@ import type { IsoDate } from '../engine/dates';
 import type { BodyWeightEntry, Exercise, Prescription, SetLog, WeekPlan, WorkoutSession } from '../engine/model';
 import type { FitnessDB } from './db';
 import { allTemplates, exerciseMap } from './custom';
+import { listMeasurements } from './body';
+import type { MeasurementEntry } from '../engine/measurements';
 
 export interface ProgressData {
   sessions: WorkoutSession[];
   sets: SetLog[];
   prescriptions: Prescription[];
   bodyWeights: BodyWeightEntry[];
+  measurements: MeasurementEntry[];
   plans: WeekPlan[];
   exercises: Map<string, Exercise>;
   /** Slot key or link group → exercise name. */
@@ -17,7 +20,7 @@ export interface ProgressData {
 }
 
 export async function loadProgress(db: FitnessDB): Promise<ProgressData> {
-  const [sessions, sets, prescriptions, bodyWeights, plans, exercises, templates, archived] = await Promise.all([
+  const [sessions, sets, prescriptions, bodyWeights, plans, exercises, templates, archived, measurements] = await Promise.all([
     db.sessions.toArray(),
     db.sets.toArray(),
     db.prescriptions.toArray(),
@@ -26,6 +29,7 @@ export async function loadProgress(db: FitnessDB): Promise<ProgressData> {
     exerciseMap(db),
     allTemplates(db),
     db.templates.toArray(),
+    listMeasurements(db),
   ]);
   const names = new Map<string, string>();
   for (const t of [...templates, ...archived]) {
@@ -35,7 +39,7 @@ export async function loadProgress(db: FitnessDB): Promise<ProgressData> {
     }
   }
   bodyWeights.sort((a, b) => a.date.localeCompare(b.date));
-  return { sessions, sets, prescriptions, bodyWeights, plans, exercises, nameOf: (k) => names.get(k) ?? k };
+  return { sessions, sets, prescriptions, bodyWeights, measurements, plans, exercises, nameOf: (k) => names.get(k) ?? k };
 }
 
 export function validateBodyWeight(date: IsoDate, kg: number | null, today: IsoDate): string[] {

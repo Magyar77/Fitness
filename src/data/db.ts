@@ -3,6 +3,7 @@ import type {
   BodyWeightEntry,
   EquipmentProfile,
   Exercise,
+  ProgressPhoto,
   Prescription,
   ProgramVersion,
   SetLog,
@@ -13,6 +14,7 @@ import type {
 import type { DecisionRecord } from '../engine/progression';
 import { PROGRAM_V2 } from '../engine/program/programV2';
 import { READY_MADE } from '../engine/program/templates';
+import type { MeasurementEntry } from '../engine/measurements';
 
 export interface SettingRow {
   key: string;
@@ -20,7 +22,7 @@ export interface SettingRow {
 }
 
 export const DB_NAME = 'personal-fitness';
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 /** Every table, in backup order. Primary key in brackets. */
 export const TABLES = {
@@ -35,6 +37,8 @@ export const TABLES = {
   weekPlans: 'weekStart',
   bodyWeights: 'date',
   settings: 'key',
+  measurements: 'date', // since schema 2
+  photos: 'id', // since schema 2
 } as const;
 
 export type TableName = keyof typeof TABLES;
@@ -51,10 +55,12 @@ export class FitnessDB extends Dexie {
   weekPlans!: EntityTable<WeekPlan, 'weekStart'>;
   bodyWeights!: EntityTable<BodyWeightEntry, 'date'>;
   settings!: EntityTable<SettingRow, 'key'>;
+  measurements!: EntityTable<MeasurementEntry, 'date'>;
+  photos!: EntityTable<ProgressPhoto, 'id'>;
 
   constructor(name = DB_NAME) {
     super(name);
-    this.version(SCHEMA_VERSION).stores({
+    this.version(1).stores({
       programs: 'id',
       templates: 'id, code',
       exercises: 'id',
@@ -67,7 +73,9 @@ export class FitnessDB extends Dexie {
       bodyWeights: 'date',
       settings: 'key',
     });
-    // Future schema changes: add this.version(2).stores({...}).upgrade(tx => ...) here,
+    // Schema 2: body measurements and progress photos (new tables only, nothing to migrate).
+    this.version(2).stores({ measurements: 'date', photos: 'id, date' });
+    // Future schema changes: add this.version(3).stores({...}).upgrade(tx => ...) here,
     // and a matching step in upgradeBackup() so old backup files keep restoring.
   }
 }

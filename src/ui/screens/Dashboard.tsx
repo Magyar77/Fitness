@@ -11,6 +11,7 @@ import { hasGoal } from '../../data/profile';
 import { formatLoad } from '../../engine/units';
 import { allRecords } from '../../engine/records';
 import { RecordList } from '../progress/RecordsTab';
+import { formatMeasure, measureChange } from '../../engine/measurements';
 
 interface Props {
   date: string;
@@ -62,6 +63,7 @@ export function Dashboard({ date, templates, pending }: Props) {
   const latestWeek = weeks.at(-1);
   const met = pullUp.milestones.filter((m) => m.met).length;
   const recent = allRecords(data.exercises, data.sessions, data.sets, unit, profile.barKg).timeline.filter((r) => r.date >= addDays(date, -14));
+  const waist = measureChange(data.measurements, 'waist');
   const records = recent.filter((r, i) => recent.findIndex((x) => x.exerciseId === r.exerciseId) === i).slice(0, 4); // newest per exercise
   const name = (code: string) => {
     const t = templates.get(code);
@@ -87,6 +89,13 @@ export function Dashboard({ date, templates, pending }: Props) {
                 : `week of ${niceDate(latestWeek.weekStart)}`}
           </span>
         </Link>
+        {waist && (
+          <Link to="/progress" className="stat">
+            <span className="muted small">Waist</span>
+            <strong>{formatMeasure('waist', waist.latest.value, unit)}</strong>
+            <span className="muted small">{waist.first.date === waist.latest.date ? niceDate(waist.latest.date) : `${waist.change > 0 ? '+' : waist.change < 0 ? '−' : '±'}${formatMeasure('waist', Math.abs(waist.change), unit)} since ${niceDate(waist.first.date)}`}</span>
+          </Link>
+        )}
       </div>
 
       {notes.length > 0 && (

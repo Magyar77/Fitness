@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getDb } from '../../data/db';
 import { backupReminder, checkBackup, importBundle, newerThanBackup, restoreBackup } from '../../data/backup';
-import { saveBackup } from '../backupActions';
+import { photosInBackup, saveBackup, setPhotosInBackup } from '../backupActions';
+import { photoStats } from '../../data/body';
+import { measurementsCsv } from '../../data/csv';
 import { EquipmentForm } from '../settings/EquipmentForm';
 import { WorkoutAlertsForm } from '../settings/WorkoutAlertsForm';
 import { InstallCard } from '../InstallCard';
@@ -38,6 +40,8 @@ export function MoreScreen() {
   const [busy, setBusy] = useState(false);
   const [version, setVersion] = useState(0); // bump to reload counts after a change
   const [reminder, setReminder] = useState<{ due: boolean; text: string } | null>(null);
+  const [photos, setPhotos] = useState<{ count: number; bytes: number }>({ count: 0, bytes: 0 });
+  const [withPhotos, setWithPhotos] = useState(photosInBackup);
   const restoreInput = useRef<HTMLInputElement>(null);
   const importInput = useRef<HTMLInputElement>(null);
 
@@ -51,9 +55,11 @@ export function MoreScreen() {
       db.bodyWeights.count(),
       db.weekPlans.count(),
       backupReminder(db),
-    ]).then(([s, sessions, sets, prescriptions, bodyWeights, weekPlans, r]) => {
+      photoStats(db),
+    ]).then(([s, sessions, sets, prescriptions, bodyWeights, weekPlans, r, ph]) => {
       if (!alive) return;
       setReminder(r);
+      setPhotos(ph);
       setStatus(s);
       setCounts({ sessions, sets, prescriptions, bodyWeights, weekPlans });
     });
@@ -75,14 +81,15 @@ export function MoreScreen() {
     }
   }
 
-  const exportJson = (how: 'share' | 'download') => run(async () => ({ kind: 'ok', text: (await saveBackup(db, how)).text }));
+  const exportJson = (how: 'share' | 'download') => run(async () => ({ kind: 'ok', text: (await saveBackup(db, how, { photos: withPhotos })).text }));
 
   const exportCsv = () =>
     run(async () => {
-      const [sessions, sets, weights, custom] = await Promise.all([db.sessions.toArray(), db.sets.toArray(), db.bodyWeights.toArray(), db.exercises.toArray()]);
+      const [sessions, sets, weights, custom, measurements] = await Promise.all([db.sessions.toArray(), db.sets.toArray(), db.bodyWeights.toArray(), db.exercises.toArray(), db.measurements.toArray()]);
       downloadText(`fitness-sets-${today()}.csv`, setsCsv(sessions, sets, new Map(custom.map((e) => [e.id, e.name]))), 'text/csv');
       downloadText(`fitness-bodyweight-${today()}.csv`, bodyWeightCsv(weights), 'text/csv');
-      return { kind: 'ok', text: 'Two CSV files saved: sets and body weight.' };
+      if (measurements.length) downloadText(`fitness-measurements-${today()}.csv`, measurementsCsv(measurements), 'text/csv');
+      return { kind: 'ok', text: measurements.length ? 'Three CSV files saved: sets, body weight and measurements.' : 'Two CSV files saved: sets and body weight.' };
     });
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>, mode: 'restore' | 'import') {
@@ -177,6 +184,14 @@ export function MoreScreen() {
           <button type="button" className="secondary" onClick={() => restoreInput.current?.click()} disabled={busy}>Restore backup…</button>
         </div>
         <input ref={restoreInput} type="file" accept="application/json,.json" hidden onChange={(e) => void onFile(e, 'restore')} />
+        {photos.count > 0 && (
+          <label className="flag goal">
+            <input type="checkbox" checked={withPhotos} onChange={(e) => { setWithPhotos(e.target.checked); setPhotosInBackup(e.target.checked); }} />
+            <span>
+              Include progress photos <span className="muted small">({photos.count} photo{photos.count === 1 ? '' : 's'}, about {Math.max(0.1, Math.round((photos.bytes * 1.37) / 104857.6) / 10)} MB in the file). Without them, restoring keeps the photos already on the phone.</span>
+            </span>
+          </label>
+        )}
       </div>
 
       <div className="card">

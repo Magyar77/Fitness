@@ -589,3 +589,21 @@ button.link.inline { min-height: 0; padding: 0; color: inherit; text-decoration:
 /* Workout time */
 .duration-field { max-width: 220px; margin: 12px 0 4px; }
 .duration-field .muted { display: block; margin-top: 4px; }
+
+/* Body: measurements and photos */
+.body-switch { margin-bottom: 12px; }
+.body-switch button { min-height: 36px; font-size: 13px; }
+button.stat { height: auto; text-align: left; font-weight: 400; cursor: pointer; }
+button.stat.chosen { border-color: var(--accent); }
+.measure-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
+.add-photo { margin-top: 12px; }
+.thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+button.thumb { height: auto; padding: 0; border: none; background: none; display: grid; gap: 4px; color: var(--muted); font-size: 12px; font-weight: 500; }
+.thumb img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: var(--radius-sm); background: var(--inset); }
+.photo-view img { width: 100%; max-height: 70vh; object-fit: contain; border-radius: var(--radius-sm); background: var(--inset); margin-bottom: 8px; }
+.photo-view .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.compare figure { margin: 0; display: grid; gap: 6px; }
+.compare img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: var(--radius-sm); background: var(--inset); }
+.compare select { width: 100%; min-height: 40px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--input); padding: 0 8px; }
+.history .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }

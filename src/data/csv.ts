@@ -1,6 +1,7 @@
 // CSV export (RFC 4180 quoting) for spreadsheets.
 
 import type { BodyWeightEntry, SetLog, WorkoutSession } from '../engine/model';
+import { MEASURES, type MeasurementEntry } from '../engine/measurements';
 import { EXERCISES_BY_ID } from '../engine/library/exercises';
 
 type Cell = string | number | boolean | null | undefined;
@@ -53,4 +54,10 @@ export function setsCsv(sessions: WorkoutSession[], sets: SetLog[], exerciseName
 export function bodyWeightCsv(entries: BodyWeightEntry[]): string {
   const rows = [...entries].sort((a, b) => a.date.localeCompare(b.date)).map((e) => [e.date, e.kg, e.conditions, e.source]);
   return toCsv(['date', 'kg', 'conditions', 'source'], rows);
+}
+
+/** One row per day; lengths in cm, body fat in %. */
+export function measurementsCsv(entries: MeasurementEntry[]): string {
+  const rows = [...entries].sort((a, b) => a.date.localeCompare(b.date)).map((e) => [e.date, ...MEASURES.map((m) => e.values[m.key]), e.notes]);
+  return toCsv(['date', ...MEASURES.map((m) => (m.key === 'bodyFat' ? 'body_fat_pct' : `${m.key}_cm`)), 'notes'], rows);
 }

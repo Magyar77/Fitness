@@ -295,6 +295,21 @@ export interface WeekPlan {
   notes: string[];
 }
 
+export type PhotoPose = 'front' | 'side' | 'back' | 'other';
+
+/** A progress photo, kept only on the device (and in backups if you choose). */
+export interface ProgressPhoto {
+  id: string;
+  date: IsoDate;
+  pose: PhotoPose;
+  mime: string;
+  /** Image bytes (stored as an ArrayBuffer, which every browser's IndexedDB keeps reliably). */
+  bytes: ArrayBuffer;
+  width: number;
+  height: number;
+  createdAt: string;
+}
+
 export interface BodyWeightEntry {
   date: IsoDate;
   kg: number;

@@ -4,7 +4,8 @@ import type { Table } from 'dexie';
 import { EXERCISES_BY_ID } from '../engine/library/exercises';
 import { validateBundle } from '../engine/import/validateBundle';
 import { PROGRAM_V2 } from '../engine/program/programV2';
-import type { DataBundle, Exercise, ProgramVersion } from '../engine/model';
+import type { DataBundle, Exercise, ProgramVersion, ProgressPhoto } from '../engine/model';
+import { fromBase64, toBase64 } from './base64';
 import { SCHEMA_VERSION, TABLES, type FitnessDB, type TableName } from './db';
 
 export const BACKUP_FORMAT = 'personal-fitness-backup';
@@ -16,7 +17,12 @@ export interface BackupFile {
   schemaVersion: number;
   exportedAt: string;
   tables: BackupTables;
+  /** Photos were left out of this file: restoring it keeps the photos on the device. */
+  photosOmitted?: boolean;
 }
+
+/** A photo as written in a backup file: the bytes as base64 text. */
+type PhotoRow = Omit<ProgressPhoto, 'bytes'> & { data: string };
 
 const TABLE_NAMES = Object.keys(TABLES) as TableName[];
 
@@ -24,12 +30,17 @@ function tableOf(db: FitnessDB, name: TableName): Table<unknown, unknown> {
   return db[name] as unknown as Table<unknown, unknown>;
 }
 
-export async function exportBackup(db: FitnessDB, now: Date = new Date()): Promise<BackupFile> {
+export async function exportBackup(db: FitnessDB, now: Date = new Date(), opts: { photos?: boolean } = {}): Promise<BackupFile> {
+  const withPhotos = opts.photos ?? true;
   const tables = {} as BackupTables;
   await db.transaction('r', TABLE_NAMES.map((n) => tableOf(db, n)), async () => {
-    for (const name of TABLE_NAMES) tables[name] = await tableOf(db, name).toArray();
+    for (const name of TABLE_NAMES) {
+      if (name === 'photos') {
+        tables.photos = withPhotos ? (await db.photos.toArray()).map(({ bytes, ...rest }): PhotoRow => ({ ...rest, data: toBase64(bytes) })) : [];
+      } else tables[name] = await tableOf(db, name).toArray();
+    }
   });
-  return { format: BACKUP_FORMAT, schemaVersion: SCHEMA_VERSION, exportedAt: now.toISOString(), tables };
+  return { format: BACKUP_FORMAT, schemaVersion: SCHEMA_VERSION, exportedAt: now.toISOString(), tables, ...(withPhotos ? {} : { photosOmitted: true }) };
 }
 
 /** Brings an older backup up to the current schema. Throws for unknown or newer versions. */
@@ -38,7 +49,10 @@ export function upgradeBackup(file: BackupFile): BackupFile {
     throw new Error(`This backup was made by a newer version of the app (schema ${file.schemaVersion}). Update the app first.`);
   }
   if (file.schemaVersion < 1) throw new Error(`Unknown backup schema ${file.schemaVersion}.`);
-  // Version 1 is current. Future: if (file.schemaVersion === 1) file = v1toV2(file); …
+  if (file.schemaVersion === 1) {
+    // Schema 2 added measurements and photos. A v1 file has neither, so it keeps the photos on the device.
+    file = { ...file, schemaVersion: 2, photosOmitted: true, tables: { ...file.tables, measurements: [], photos: [] } };
+  }
   return file;
 }
 
@@ -103,11 +117,18 @@ function referenceProblems(programs: ProgramVersion[], customExercises: Exercise
 export async function restoreBackup(db: FitnessDB, raw: unknown): Promise<{ ok: true } | { ok: false; problems: string[] }> {
   const { file, problems } = checkBackup(raw);
   if (!file) return { ok: false, problems };
+  let photos: ProgressPhoto[];
+  try {
+    photos = (file.tables.photos as PhotoRow[]).map(({ data, ...rest }) => ({ ...rest, bytes: fromBase64(data) }));
+  } catch {
+    return { ok: false, problems: ['A photo in the backup is damaged. Nothing was changed.'] };
+  }
   await db.transaction('rw', TABLE_NAMES.map((n) => tableOf(db, n)), async () => {
     for (const name of TABLE_NAMES) {
+      if (name === 'photos' && file.photosOmitted) continue; // keep the photos already here
       const table = tableOf(db, name);
       await table.clear();
-      await table.bulkAdd(file.tables[name]);
+      await table.bulkAdd(name === 'photos' ? photos : file.tables[name]);
     }
   });
   return { ok: true };
