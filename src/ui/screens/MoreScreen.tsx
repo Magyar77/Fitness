@@ -3,7 +3,8 @@ import { getDb } from '../../data/db';
 import { checkBackup, exportBackup, importBundle, restoreBackup } from '../../data/backup';
 import { bodyWeightCsv, setsCsv } from '../../data/csv';
 import { requestPersistence, storageStatus, type StorageStatus } from '../../data/storage';
-import { downloadText, localDate } from '../download';
+import { downloadText } from '../download';
+import { today } from '../dates';
 
 interface Counts {
   sessions: number;
@@ -68,15 +69,15 @@ export function MoreScreen() {
   const exportJson = () =>
     run(async () => {
       const backup = await exportBackup(db);
-      downloadText(`fitness-backup-${localDate()}.json`, JSON.stringify(backup), 'application/json');
+      downloadText(`fitness-backup-${today()}.json`, JSON.stringify(backup), 'application/json');
       return { kind: 'ok', text: 'Backup saved to your downloads. Keep a copy somewhere safe, such as Google Drive.' };
     });
 
   const exportCsv = () =>
     run(async () => {
       const [sessions, sets, weights, custom] = await Promise.all([db.sessions.toArray(), db.sets.toArray(), db.bodyWeights.toArray(), db.exercises.toArray()]);
-      downloadText(`fitness-sets-${localDate()}.csv`, setsCsv(sessions, sets, new Map(custom.map((e) => [e.id, e.name]))), 'text/csv');
-      downloadText(`fitness-bodyweight-${localDate()}.csv`, bodyWeightCsv(weights), 'text/csv');
+      downloadText(`fitness-sets-${today()}.csv`, setsCsv(sessions, sets, new Map(custom.map((e) => [e.id, e.name]))), 'text/csv');
+      downloadText(`fitness-bodyweight-${today()}.csv`, bodyWeightCsv(weights), 'text/csv');
       return { kind: 'ok', text: 'Two CSV files saved: sets and body weight.' };
     });
 

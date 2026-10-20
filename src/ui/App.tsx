@@ -1,5 +1,7 @@
 import { HashRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { MoreScreen } from './screens/MoreScreen';
+import { SessionScreen } from './screens/SessionScreen';
+import { TodayScreen } from './screens/TodayScreen';
 
 const TABS = [
   { path: '/today', label: 'Today' },
@@ -23,9 +25,11 @@ export function App() {
     <HashRouter>
       <main className="content">
         <Routes>
-          {TABS.filter((t) => t.path !== '/more').map((t) => (
-            <Route key={t.path} path={t.path} element={<Placeholder title={t.label} />} />
-          ))}
+          <Route path="/today" element={<TodayScreen />} />
+          <Route path="/session/:id" element={<SessionScreen />} />
+          <Route path="/week" element={<Placeholder title="Week" />} />
+          <Route path="/log" element={<Placeholder title="Log" />} />
+          <Route path="/progress" element={<Placeholder title="Progress" />} />
           <Route path="/more" element={<MoreScreen />} />
           <Route path="*" element={<Navigate to="/today" replace />} />
         </Routes>

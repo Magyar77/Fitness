@@ -87,3 +87,110 @@ button:disabled { opacity: 0.5; cursor: default; }
 }
 
 .tab.active { color: var(--accent); font-weight: 600; }
+
+/* ---- Today ---- */
+.card.highlight { border-color: var(--accent); }
+.workout-list { display: grid; gap: 8px; }
+.workout-button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 8px 12px;
+  height: auto;
+}
+.workout-button .code { font-size: 20px; width: 24px; text-align: center; }
+.workout-button small { display: block; font-weight: 400; color: var(--muted); }
+
+/* ---- Logger ---- */
+.back { color: var(--accent); text-decoration: none; display: inline-block; margin-top: 4px; }
+.session h1 { margin-bottom: 4px; }
+.session.with-rest { padding-bottom: 72px; }
+.small { font-size: 13px; }
+.card p.small, .card details.small { margin-bottom: 8px; }
+.exercise header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.exercise.complete { border-color: #2f6b47; }
+.exercise .target { font-weight: 600; margin-bottom: 4px; }
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 8px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: #24405a;
+  color: var(--accent);
+  vertical-align: middle;
+}
+details summary { cursor: pointer; color: var(--muted); }
+details ul { margin: 6px 0 0; padding-left: 18px; color: var(--muted); }
+
+.sets { display: grid; gap: 6px; margin: 8px 0; }
+.set { border-radius: 10px; padding: 6px; background: #151a20; }
+.set.done { background: #13261b; }
+.set-row { display: flex; align-items: flex-end; gap: 6px; }
+.set-no { width: 18px; color: var(--muted); text-align: center; padding-bottom: 12px; }
+.num { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; }
+.num span { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+.num input, .num select, .set-more .note, .pain input, textarea {
+  font: inherit;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid #2f3742;
+  background: var(--bg);
+  color: var(--text);
+}
+.num input { text-align: center; font-size: 18px; }
+textarea { padding: 8px; min-height: 72px; margin: 8px 0; }
+button.check, button.icon {
+  flex: 0 0 44px;
+  width: 44px;
+  padding: 0;
+  font-size: 18px;
+  background: transparent;
+  color: var(--muted);
+  border-color: #2f3742;
+}
+button.check.on { background: #2f9e5f; border-color: #2f9e5f; color: #fff; }
+button.icon.running { color: #ffb84d; border-color: #ffb84d; }
+.flag { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin: 6px 0 0 24px; min-height: 32px; }
+.flag input { width: 20px; height: 20px; }
+.set-more { display: grid; gap: 6px; margin: 6px 0 0 24px; }
+button.link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  padding: 0 4px;
+  min-height: 36px;
+  font-weight: 500;
+}
+button.link.danger, .danger { color: #ff8080; }
+button.danger:not(.link) { background: #5a1f1f; border-color: #a33; color: #ffd0d0; }
+.card-actions { display: flex; justify-content: space-between; }
+.pain { display: grid; gap: 8px; margin-top: 8px; }
+.notice.warn { background: #3a2e12; color: #ffd27a; }
+
+.fatigue { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.fatigue button { padding: 4px 0; height: auto; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.fatigue small { font-size: 10px; font-weight: 400; }
+
+.summary { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 10px; }
+.summary li { display: grid; gap: 2px; }
+
+.rest-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #1d3a52;
+  font-weight: 600;
+  font-size: 18px;
+}
+.rest-bar.over { background: #2f6b47; }
+.rest-bar button { min-height: 36px; }
