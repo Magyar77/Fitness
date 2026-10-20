@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { formatMinutes, plannedMinutes } from '../../engine/duration';
 import { useNavigate } from 'react-router-dom';
 import { getDb } from '../../data/db';
 import { checkWeek, loadWeekContext, proposeWeek, saveWeek, unplaced, type WeekContext } from '../../data/weeks';
@@ -234,7 +235,7 @@ export function WeekScreen() {
                         aria-label={`${entryName(e)}, ${e.state === 'done' ? 'done' : 'planned'}. Tap to move or skip.`}
                       >
                         <span>{entryName(e)}</span>
-                        <span className="entry-state">{e.state === 'done' ? '✓ done' : isPast(d) ? 'missed' : 'planned'}</span>
+                        <span className="entry-state">{e.state === 'done' ? '✓ done' : isPast(d) ? 'missed' : `planned${t ? ` · ~${formatMinutes(plannedMinutes(t))}` : ''}`}</span>
                       </button>
                       <button type="button" className="icon expand" onClick={() => toggle(key)} aria-expanded={expanded} aria-label={`${expanded ? 'Hide' : 'Show'} exercises for ${entryName(e)}`}>
                         {expanded ? '⌃' : '⌄'}

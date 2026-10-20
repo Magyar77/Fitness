@@ -7,6 +7,7 @@ import type { Exercise, WorkoutTemplate } from '../../engine/model';
 import type { ScheduleWarning } from '../../engine/scheduling';
 import { niceDate, today } from '../dates';
 import { ProgramCard } from '../workouts/ProgramCard';
+import { formatMinutes, plannedMinutes } from '../../engine/duration';
 
 interface Loaded {
   mine: WorkoutTemplate[];
@@ -76,7 +77,7 @@ export function WorkoutsScreen() {
           <div key={t.code} className="mine">
             <div className="mine-head">
               <strong>{t.name}</strong>
-              <span className="muted small">{t.slots.length} exercise{t.slots.length === 1 ? '' : 's'} · {t.demand}</span>
+              <span className="muted small">{t.slots.length} exercise{t.slots.length === 1 ? '' : 's'} · {t.demand} · ~{formatMinutes(plannedMinutes(t))}</span>
             </div>
             <p className="muted small">{t.slots.map((s) => names.get(s.exerciseId) ?? s.name).join(' · ')}</p>
             <div className="buttons">

@@ -274,6 +274,8 @@ export interface WorkoutSession {
   prescriptionSnapshot: SnapshotEntry[] | null;
   /** Exercises swapped in for this session only: slot key → exercise id. Never drive that slot's progression. */
   swaps?: Record<string, string>;
+  /** How long it took, when entered at the end; otherwise start to finish is used. */
+  durationMin?: number;
 }
 
 export interface WeekPlanEntry {

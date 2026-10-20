@@ -15,6 +15,8 @@ import { ExerciseCard } from '../logger/ExerciseCard';
 import { RestTimer } from '../logger/RestTimer';
 import { useBar, useUnit } from '../profile';
 import { clock, niceDate } from '../dates';
+import { formatMinutes, sessionMinutes } from '../../engine/duration';
+import { NumberField } from '../logger/NumberField';
 
 interface Loaded {
   session: WorkoutSession;
@@ -65,6 +67,12 @@ export function SessionScreen() {
   const [finishing, setFinishing] = useState(false);
   const [fatigue, setFatigue] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
+  const [minutes, setMinutes] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
   const [version, setVersion] = useState(0);
 
   useEffect(() => {
@@ -146,7 +154,7 @@ export function SessionScreen() {
 
   async function finish() {
     try {
-      await finishSession(db, id, { fatigue, notes: notes.trim() ? [notes.trim()] : [] });
+      await finishSession(db, id, { fatigue, notes: notes.trim() ? [notes.trim()] : [], durationMin: minutes });
       await evaluateSession(db, id);
       setRest(null);
       setFinishing(false);
@@ -187,6 +195,7 @@ export function SessionScreen() {
   const completed = session.status === 'completed';
   const snapshot = new Map((session.prescriptionSnapshot ?? []).map((e) => [e.slotKey, e.text]));
   const doneCount = sets.filter((s) => s.completed).length;
+  const elapsed = session.startedAt ? Math.max(0, Math.round((now - Date.parse(session.startedAt)) / 60000)) : null;
 
   return (
     <section className={`screen session ${restEndsAt ? 'with-rest' : ''}`}>
@@ -195,6 +204,8 @@ export function SessionScreen() {
       <p className="muted">
         {niceDate(session.date)} · started {clock(session.startedAt)}
         {completed && ` · finished ${clock(session.finishedAt)}`}
+        {completed && sessionMinutes(session) !== null && ` · took ${formatMinutes(sessionMinutes(session)!)}`}
+        {!completed && elapsed !== null && ` · ${formatMinutes(elapsed)} so far`}
       </p>
       {error && <p className="notice error">{error}</p>}
 
@@ -288,7 +299,7 @@ export function SessionScreen() {
             <div className="card">
               <p className="muted">{doneCount} of {sets.length} sets done. Everything is saved as you go.</p>
               <div className="buttons">
-                <button type="button" onClick={() => setFinishing(true)}>Finish workout</button>
+                <button type="button" onClick={() => { setMinutes(elapsed !== null && elapsed <= 240 ? elapsed : null); setFinishing(true); }}>Finish workout</button>
                 <button type="button" className="link danger" onClick={() => void discard()}>Discard</button>
               </div>
             </div>
@@ -302,6 +313,10 @@ export function SessionScreen() {
                     <small>{label}</small>
                   </button>
                 ))}
+              </div>
+              <div className="duration-field">
+                <NumberField label="How long it took (min)" integer value={minutes} onCommit={setMinutes} />
+                {elapsed !== null && elapsed > 240 && <span className="muted small">Started more than 4 hours ago, so enter the real time.</span>}
               </div>
               <textarea placeholder="Notes: sleep, energy, anything unusual (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
               {doneCount < sets.length && <p className="muted small">{sets.length - doneCount} set(s) not marked done will be saved as not completed.</p>}

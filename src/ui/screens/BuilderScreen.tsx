@@ -9,6 +9,8 @@ import { BODY_PARTS, type BodyPart } from '../../engine/library/groups';
 import { today } from '../dates';
 import { ExerciseBrowser } from '../library/ExerciseBrowser';
 import { ExerciseDetail } from '../library/ExerciseDetail';
+import { estimateMinutes, formatMinutes } from '../../engine/duration';
+import { buildWorkout } from '../../engine/custom';
 
 const FOCUSES: Focus[] = ['full', 'upper', 'lower', 'push', 'pull', 'arms', 'core', 'parts'];
 const SETUPS: Setup[] = ['gym', 'dumbbells', 'bodyweight', 'bands'];
@@ -64,6 +66,9 @@ export function BuilderScreen() {
   const generated = useMemo(() => (exercises ? buildFromOptions(exercises, options) : null), [exercises, options]);
   if (!exercises || !generated) return <section className="screen"><p className="muted">Loading…</p></section>;
   const built = edits ?? generated;
+  const byId = new Map(exercises.map((e) => [e.id, e]));
+  let key = 0;
+  const minutes = estimateMinutes(buildWorkout(toWorkoutDraft(built), byId, { id: 'preview', code: 'preview', newSlotKey: () => `p-${key++}` }));
 
   const change = (p: Partial<BuildOptions>) => {
     const next = { ...options, variant: 0, ...p };
@@ -163,7 +168,10 @@ export function BuilderScreen() {
       ) : (
         <div className="card">
           <div className="built-head">
-            <h2>{built.name}</h2>
+            <h2>
+              {built.name}
+              <span className="muted small"> · about {formatMinutes(minutes)}</span>
+            </h2>
             <button type="button" className="link" onClick={() => change({ variant: (options.variant ?? 0) + 1 })}>Shuffle</button>
           </div>
           {built.skipped.length > 0 && !edits && (

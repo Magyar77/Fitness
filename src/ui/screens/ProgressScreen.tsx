@@ -13,6 +13,7 @@ import { hasGoal } from '../../data/profile';
 import { formatLoad, fromDisplay, toDisplay } from '../../engine/units';
 import { e1rmSeries } from '../../engine/records';
 import { RecordsTab } from '../progress/RecordsTab';
+import { formatMinutes, sessionMinutes } from '../../engine/duration';
 
 type Tab = 'exercises' | 'records' | 'body' | 'pullup' | 'weeks';
 const TABS: { id: Tab; label: string }[] = [
@@ -260,13 +261,18 @@ function PullUpTab({ data }: { data: ProgressData }) {
 
 function WeeksTab({ data }: { data: ProgressData }) {
   const rows = adherence(data.plans, data.sessions, today()).reverse();
+  const weekTime = (start: string) => {
+    const end = addDays(start, 7);
+    const total = data.sessions.filter((s) => s.date >= start && s.date < end).reduce((sum, s) => sum + (sessionMinutes(s) ?? 0), 0);
+    return total ? formatMinutes(total) : '–';
+  };
   if (!rows.length) return <div className="card"><p className="muted">Save a week plan to track planned versus completed workouts.</p></div>;
   return (
     <div className="card">
       <h2>Planned vs completed</h2>
       <table className="data-table">
         <thead>
-          <tr><th>Week of</th><th>Done</th><th>Missed</th><th>Skipped</th><th>Extra</th></tr>
+          <tr><th>Week of</th><th>Done</th><th>Missed</th><th>Skipped</th><th>Extra</th><th>Time</th></tr>
         </thead>
         <tbody>
           {rows.map((r) => (
@@ -279,6 +285,7 @@ function WeeksTab({ data }: { data: ProgressData }) {
               <td>{r.missed || '–'}</td>
               <td>{r.skipped || '–'}</td>
               <td>{r.extra || '–'}</td>
+              <td>{weekTime(r.weekStart)}</td>
             </tr>
           ))}
         </tbody>

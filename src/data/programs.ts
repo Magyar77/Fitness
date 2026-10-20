@@ -108,7 +108,7 @@ export async function saveProgramWorkout(
     focus: existing?.focus ?? built.focus,
     pullUpWork: existing?.pullUpWork ?? '—',
     pullRole: existing?.pullRole === 'main' ? 'main' : built.pullRole,
-    estMinutes: existing?.estMinutes ?? null,
+    estMinutes: null, // the written time no longer fits once the workout changes; the estimate takes over
   };
   const templates = existing ? base.templates.map((t) => (t.code === code ? workout : t)) : [...base.templates, workout];
   const added = await startingTargets(db, workout, draft, exercises, today);

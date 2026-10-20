@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getDb } from '../../data/db';
 import { backupReminder } from '../../data/backup';
 import { saveBackup } from '../backupActions';
+import { durationLabel } from '../../engine/duration';
 import { customWorkouts } from '../../data/custom';
 import { pendingDecisions } from '../../data/recommendations';
 import { currentProgram, inProgressSession, startSession } from '../../data/workouts';
@@ -21,6 +22,7 @@ interface State {
   /** Your workouts, including archived ones (so planned/done entries still resolve). */
   mine: WorkoutTemplate[];
   backup: { due: boolean; text: string };
+  done: WorkoutSession[];
 }
 
 const label = (t: WorkoutTemplate) => (t.kind === 'program' ? `${t.code} · ${t.name}` : t.name);
@@ -35,8 +37,8 @@ export function TodayScreen() {
 
   useEffect(() => {
     let alive = true;
-    Promise.all([currentProgram(db), inProgressSession(db), db.weekPlans.get(weekStart(date)), pendingDecisions(db), customWorkouts(db, true), backupReminder(db)])
-      .then(([program, open, plan, pending, mine, backup]) => alive && setState({ program, open, plan, pending, mine, backup }))
+    Promise.all([currentProgram(db), inProgressSession(db), db.weekPlans.get(weekStart(date)), pendingDecisions(db), customWorkouts(db, true), backupReminder(db), db.sessions.where('status').equals('completed').toArray()])
+      .then(([program, open, plan, pending, mine, backup, done]) => alive && setState({ program, open, plan, pending, mine, backup, done }))
       .catch((e: Error) => alive && setError(e.message));
     return () => {
       alive = false;
@@ -56,7 +58,8 @@ export function TodayScreen() {
   if (error) return <section className="screen"><h1>Today</h1><p className="notice error">{error}</p></section>;
   if (!state) return <section className="screen"><h1>Today</h1><p className="muted">Loading…</p></section>;
 
-  const { program, open, plan, pending, mine, backup } = state;
+  const { program, open, plan, pending, mine, backup, done } = state;
+  const time = (t: WorkoutTemplate) => durationLabel(t, done);
   const all = [...program.templates, ...mine];
   const slotName = new Map(all.flatMap((t) => t.slots).map((s) => [s.slotKey, s.name]));
   const byCode = new Map(all.map((t) => [t.code, t]));
@@ -108,7 +111,7 @@ export function TodayScreen() {
             <p>
               <strong>{label(t)}</strong>
               <br />
-              <span className="muted">{t.focus}{t.estMinutes ? ` · ~${t.estMinutes} min` : ''}</span>
+              <span className="muted">{t.focus} · {time(t)}</span>
             </p>
             {e.state === 'done' && e.sessionId ? (
               <button type="button" className="secondary" onClick={() => navigate(`/session/${e.sessionId}`)}>View workout</button>
@@ -146,7 +149,7 @@ export function TodayScreen() {
               <span className="code">{t.kind === 'program' ? t.code : '+'}</span>
               <span>
                 {t.name}
-                <small>{t.kind === 'program' ? t.focus : `Your workout · ${t.slots.length} exercises`}</small>
+                <small>{t.kind === 'program' ? t.focus : `Your workout · ${t.slots.length} exercises`} · {time(t)}</small>
               </span>
             </button>
           ))}

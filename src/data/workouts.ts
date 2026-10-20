@@ -202,11 +202,12 @@ export async function addDiscomfort(db: FitnessDB, id: string, d: Discomfort): P
 }
 
 /** Marks the workout completed and the matching week-plan entry done. */
-export async function finishSession(db: FitnessDB, id: string, details: { fatigue: number | null; notes: string[] }, now = new Date()): Promise<void> {
+export async function finishSession(db: FitnessDB, id: string, details: { fatigue: number | null; notes: string[]; durationMin?: number | null }, now = new Date()): Promise<void> {
   await db.transaction('rw', db.sessions, db.weekPlans, async () => {
     const s = await db.sessions.get(id);
     if (!s || s.status !== 'in_progress') return;
-    await db.sessions.update(id, { status: 'completed', finishedAt: now.toISOString(), fatigue: details.fatigue, notes: details.notes });
+    const minutes = details.durationMin && details.durationMin > 0 && details.durationMin <= 600 ? { durationMin: Math.round(details.durationMin) } : {};
+    await db.sessions.update(id, { status: 'completed', finishedAt: now.toISOString(), fatigue: details.fatigue, notes: details.notes, ...minutes });
     const plan = await db.weekPlans.get(weekStart(s.date));
     if (!plan) return;
     const entry = plan.entries.find((e) => e.sessionId === id) ?? plan.entries.find((e) => e.date === s.date && e.templateCode === s.templateCode && e.state === 'planned');

@@ -148,4 +148,14 @@ describe('workout sessions', () => {
     await swapExercise(db, next, 'A-03', 'db-bench-press');
     expect((await db.sets.where('sessionId').equals(next).toArray()).filter((x) => x.slotKey === 'A-03').every((x) => x.weightKg === 22.5)).toBe(true);
   });
+
+  it('stores the workout time you enter when finishing', async () => {
+    const db = await freshDb();
+    const id = await startSession(db, A, PROGRAM_V2.id, '2026-03-03', new Date('2026-03-03T17:00:00Z'));
+    await finishSession(db, id, { fatigue: 3, notes: [], durationMin: 57.4 }, new Date('2026-03-04T08:00:00Z'));
+    expect((await db.sessions.get(id))!.durationMin).toBe(57);
+    const other = await startSession(db, D, PROGRAM_V2.id, '2026-03-05');
+    await finishSession(db, other, { fatigue: 3, notes: [], durationMin: null });
+    expect((await db.sessions.get(other))!.durationMin).toBeUndefined();
+  });
 });

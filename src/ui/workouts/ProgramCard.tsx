@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { formatMinutes, plannedMinutes } from '../../engine/duration';
 import { Link } from 'react-router-dom';
 import { getDb } from '../../data/db';
 import { chooseProgram, createOwnProgram, moveProgramWorkout, programChoices, programHistory, removeProgramWorkout } from '../../data/programs';
@@ -75,7 +76,7 @@ export function ProgramCard({ onChanged }: { onChanged?: () => void }) {
         <details key={t.code} className="program-workout">
           <summary>
             {t.code} · {t.name}
-            <span className="muted small"> · {t.slots.length} exercises</span>
+            <span className="muted small"> · {t.slots.length} exercises · ~{formatMinutes(plannedMinutes(t))}</span>
           </summary>
           <ol className="program-list">
             {t.slots.map((s) => (
