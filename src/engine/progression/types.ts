@@ -1,4 +1,5 @@
 import type { IsoDate } from '../dates';
+import type { Unit } from '../units';
 import type {
   EquipmentProfile,
   Exercise,
@@ -21,6 +22,8 @@ export interface ProgressionSettings {
   decreasePct: number;
   /** How many RIR below the target still counts as "at target" (decision 20 Oct: 1). */
   rirTolerance: number;
+  /** Unit used in explanations and target text (loads are always stored in kg). */
+  unit: Unit;
 }
 
 export const DEFAULT_SETTINGS: ProgressionSettings = {
@@ -28,6 +31,7 @@ export const DEFAULT_SETTINGS: ProgressionSettings = {
   gapDays: 14,
   decreasePct: 5,
   rirTolerance: 1,
+  unit: 'kg',
 };
 
 /** One past performance of the slot (or of any slot in its link group). */

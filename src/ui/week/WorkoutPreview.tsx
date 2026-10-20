@@ -2,6 +2,7 @@ import type { IsoDate } from '../../engine/dates';
 import { summarizeSets, targetText } from '../../engine/logging';
 import type { Exercise, Prescription, SetLog, WorkoutTemplate } from '../../engine/model';
 import { activePrescription } from '../../engine/progression';
+import { useUnit } from '../profile';
 
 interface Props {
   template: WorkoutTemplate;
@@ -14,6 +15,7 @@ interface Props {
 
 /** The exercises of one workout: the targets for that day, or what was actually done. */
 export function WorkoutPreview({ template, date, prescriptions, exercises, doneSets }: Props) {
+  const unit = useUnit();
   return (
     <ol className="preview">
       {template.slots.map((slot) => {
@@ -22,7 +24,7 @@ export function WorkoutPreview({ template, date, prescriptions, exercises, doneS
         const detail =
           sets && e
             ? sets.some((s) => s.completed)
-              ? summarizeSets(sets, e)
+              ? summarizeSets(sets, e, unit)
               : 'skipped'
             : targetText(slot, activePrescription(prescriptions, slot, date));
         return (

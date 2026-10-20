@@ -8,6 +8,8 @@ import { activePrescription } from '../engine/progression';
 import type { ScheduleWarning } from '../engine/scheduling';
 import type { FitnessDB } from './db';
 import { checkWeek, loadWeekContext } from './weeks';
+import { getProfile } from './profile';
+import { formatLoad } from '../engine/units';
 import { currentProgram } from './workouts';
 
 const shortId = () => crypto.randomUUID().replace(/-/g, '').slice(0, 6);
@@ -78,6 +80,7 @@ export async function saveWorkout(
   if (existing?.archived) workout.archived = true;
 
   const prescriptions = await db.prescriptions.toArray();
+  const { unit } = await getProfile(db);
   const added: Prescription[] = [];
   workout.slots.forEach((slot, i) => {
     const kg = draft.slots[i]!.targetKg;
@@ -91,7 +94,7 @@ export async function saveWorkout(
       effectiveFrom: today,
       ...(assisted ? { assistKg: kg } : { loadKg: kg }),
       ...(reps ? { repTargets: reps } : {}),
-      text: `${kg} kg${assisted ? ' assist' : ''}${reps ? `, ${slot.sets} × ${slot.target.kind === 'reps' ? `${slot.target.min}–${slot.target.max}` : ''}` : ''}`,
+      text: `${formatLoad(kg, unit)}${assisted ? ' assist' : ''}${reps ? `, ${slot.sets} × ${slot.target.kind === 'reps' ? `${slot.target.min}–${slot.target.max}` : ''}` : ''}`,
       status: 'active',
       quality: 'confirmed',
       source: 'user',

@@ -7,6 +7,8 @@ import type { Demand, Exercise, WorkoutTemplate } from '../../engine/model';
 import { NumberField } from '../logger/NumberField';
 import { today } from '../dates';
 import { ExerciseForm } from './ExerciseForm';
+import { useUnit } from '../profile';
+import { fromDisplay, toDisplay } from '../../engine/units';
 
 const DEMANDS: { value: Demand; label: string; help: string }[] = [
   { value: 'easy', label: 'Easy', help: 'Recovery-level effort' },
@@ -20,6 +22,7 @@ export function WorkoutEditor() {
   const { code } = useParams();
   const isNew = !code || code === 'new';
   const db = getDb();
+  const weightUnit = useUnit();
   const navigate = useNavigate();
   const [exercises, setExercises] = useState<Exercise[] | null>(null);
   const [existing, setExisting] = useState<WorkoutTemplate | undefined>(undefined);
@@ -108,7 +111,7 @@ export function WorkoutEditor() {
         const e = byId.get(s.exerciseId);
         if (!e) return null;
         const unit = unitOf(e);
-        const loadLabel = e.loadType === 'assisted_machine' ? 'start assist kg' : 'start kg';
+        const loadLabel = e.loadType === 'assisted_machine' ? `start assist ${weightUnit}` : `start ${weightUnit}`;
         const hasLoad = !['bodyweight', 'cardio'].includes(e.loadType);
         return (
           <article key={`${s.slotKey}-${i}`} className="card slot-edit">
@@ -124,7 +127,7 @@ export function WorkoutEditor() {
               {e.measure !== 'duration' && <NumberField label="sets" integer value={s.sets} onCommit={(v) => setSlot(i, { sets: v ?? 0 })} />}
               <NumberField label={`min ${unit}`} integer={e.measure === 'reps'} value={s.min} onCommit={(v) => setSlot(i, { min: v ?? 0 })} />
               <NumberField label={`max ${unit}`} integer={e.measure === 'reps'} value={s.max} onCommit={(v) => setSlot(i, { max: v ?? 0 })} />
-              {hasLoad && <NumberField label={loadLabel} value={s.targetKg} onCommit={(v) => setSlot(i, { targetKg: v })} />}
+              {hasLoad && <NumberField label={loadLabel} value={s.targetKg === null ? null : toDisplay(s.targetKg, weightUnit)} onCommit={(v) => setSlot(i, { targetKg: v === null ? null : fromDisplay(v, weightUnit) })} />}
             </div>
             <div className="set-row">
               {e.measure === 'reps' && <NumberField label="RIR from" integer value={s.rirMin} onCommit={(v) => setSlot(i, { rirMin: v })} />}

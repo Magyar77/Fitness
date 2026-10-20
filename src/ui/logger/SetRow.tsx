@@ -2,6 +2,8 @@ import { useState } from 'react';
 import type { SetLog } from '../../engine/model';
 import type { Fields } from './fields';
 import { NumberField } from './NumberField';
+import { useUnit } from '../profile';
+import { fromDisplay, toDisplay } from '../../engine/units';
 
 interface Props {
   set: SetLog;
@@ -13,6 +15,9 @@ interface Props {
 const RIR_OPTIONS = [0, 1, 2, 3, 4, 5];
 
 export function SetRow({ set, fields, onChange, onRemove }: Props) {
+  const unit = useUnit();
+  const shown = (kg: number | null | undefined) => (typeof kg === 'number' ? toDisplay(kg, unit) : kg);
+  const stored = (v: number | null) => (v === null ? null : fromDisplay(v, unit));
   const [more, setMore] = useState(false);
   const [watchStart, setWatchStart] = useState<number | null>(null);
   const patch = (p: Partial<SetLog>) => onChange({ ...set, ...p });
@@ -30,8 +35,8 @@ export function SetRow({ set, fields, onChange, onRemove }: Props) {
     <div className={`set ${set.completed ? 'done' : ''}`}>
       <div className="set-row">
         <span className="set-no">{set.setIndex}</span>
-        {fields.weight && <NumberField key={`w${set.id}`} label="kg" value={set.weightKg} onCommit={(v) => patch({ weightKg: v })} />}
-        {fields.assist && <NumberField key={`a${set.id}`} label="assist kg" value={set.assistKg} onCommit={(v) => patch({ assistKg: v })} />}
+        {fields.weight && <NumberField key={`w${set.id}`} label={unit} value={shown(set.weightKg)} onCommit={(v) => patch({ weightKg: stored(v) })} />}
+        {fields.assist && <NumberField key={`a${set.id}`} label={`assist ${unit}`} value={shown(set.assistKg)} onCommit={(v) => patch({ assistKg: stored(v) })} />}
         {fields.reps && <NumberField key={`r${set.id}`} label="reps" integer value={set.reps} onCommit={(v) => patch({ reps: v })} />}
         {fields.seconds && (
           <NumberField key={`t${set.id}`} label="sec" integer value={set.durationSec} onCommit={(v) => patch({ durationSec: v })} />

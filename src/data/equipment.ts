@@ -79,3 +79,31 @@ export async function saveEquipment(db: FitnessDB, s: EquipmentSettings): Promis
   await db.equipment.bulkPut(profiles);
   return [];
 }
+
+// ---------------------------------------------------------------------------
+// Unit defaults
+
+const CUSTOMIZED_KEY = 'equipmentCustomized';
+
+/** Remember that the person set their own steps, so a unit switch never overwrites them. */
+export async function markEquipmentCustomized(db: FitnessDB): Promise<void> {
+  await db.settings.put({ key: CUSTOMIZED_KEY, value: true });
+}
+
+/**
+ * Standard increments for a unit: kg uses the built-in profiles; lb uses 5 lb plates and
+ * dumbbells and 10 lb on the leg press. Skipped when the person has set their own steps.
+ */
+export async function applyUnitDefaults(db: FitnessDB, unit: 'kg' | 'lb'): Promise<boolean> {
+  if ((await db.settings.get(CUSTOMIZED_KEY))?.value === true) return false;
+  if (unit === 'kg') {
+    await db.equipment.clear();
+    return true;
+  }
+  const lb = (v: number) => Math.round((v / 2.20462262185) * 10000) / 10000;
+  const current = settingsFrom(await getEquipment(db));
+  await db.equipment.clear();
+  const problems = await saveEquipment(db, { ...current, barbellStep: lb(5), legPressStep: lb(10), dumbbellStep: lb(5) });
+  if (problems.length) throw new Error(problems.join(' '));
+  return true;
+}

@@ -13,6 +13,7 @@ import {
   type TargetDraft,
 } from '../engine/progression';
 import { getEquipment } from './equipment';
+import { getProfile } from './profile';
 import type { FitnessDB } from './db';
 import { currentProgram, exerciseById, findTemplate } from './workouts';
 
@@ -64,7 +65,8 @@ export async function evaluateSession(db: FitnessDB, sessionId: string, now = ne
   if (!template) return [];
   const program = template.kind === 'program' ? await currentProgram(db) : null;
   const allSlots: TemplateSlot[] = program ? program.templates.flatMap((t) => t.slots) : template.slots;
-  const [sessions, prescriptions, equipment] = await Promise.all([db.sessions.toArray(), db.prescriptions.toArray(), getEquipment(db)]);
+  const [sessions, prescriptions, equipment, profile] = await Promise.all([db.sessions.toArray(), db.prescriptions.toArray(), getEquipment(db), getProfile(db)]);
+  const settings = { ...DEFAULT_SETTINGS, unit: profile.unit };
 
   const records: DecisionRecord[] = [];
   const created: Prescription[] = [];
@@ -88,7 +90,7 @@ export async function evaluateSession(db: FitnessDB, sessionId: string, now = ne
       equipment: equipment.find((e) => e.id === exercise.equipmentProfileId),
       current,
       history: performancesFor(sessions, sets, keys, session.date).filter((p) => p.session.date < session.date || p.session.id === sessionId),
-      settings: DEFAULT_SETTINGS,
+      settings,
     });
     if (decision.outcome === 'none') continue;
 

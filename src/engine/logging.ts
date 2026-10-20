@@ -3,6 +3,7 @@
 import type { Exercise, Prescription, SetLog, Side, TemplateSlot } from './model';
 import { formatRest, formatRir, formatSetsReps } from './format';
 import type { SlotPerformance } from './progression/types';
+import { formatLoad, type Unit } from './units';
 
 export interface PlannedSet {
   side: Side;
@@ -70,7 +71,6 @@ export function planSets(slot: TemplateSlot, exercise: Exercise, rx: Prescriptio
   });
 }
 
-const kg = (v: number) => `${Number(v.toFixed(2))} kg`;
 
 function rirSummary(sets: SetLog[]): string {
   const values = sets.map((s) => s.rir).filter((r): r is NonNullable<typeof r> => !!r);
@@ -80,7 +80,8 @@ function rirSummary(sets: SetLog[]): string {
 }
 
 /** Compact one-line summary, e.g. "20 kg × 8/8/8/8 · RIR 2" or "45 s, 35 s". */
-export function summarizeSets(sets: SetLog[], exercise: Exercise): string {
+export function summarizeSets(sets: SetLog[], exercise: Exercise, weightUnit: Unit = 'kg'): string {
+  const kg = (v: number) => formatLoad(v, weightUnit);
   const done = sets.filter((s) => s.completed && !s.isWarmup);
   if (!done.length) return 'nothing logged';
   const n = (v: number | null | undefined) => (v === null || v === undefined ? '?' : `${v}`);

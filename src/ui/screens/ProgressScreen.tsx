@@ -8,6 +8,9 @@ import type { Exercise } from '../../engine/model';
 import { LineChart } from '../charts/LineChart';
 import { NumberField } from '../logger/NumberField';
 import { niceDate, today } from '../dates';
+import { useProfile, useUnit } from '../profile';
+import { hasGoal } from '../../data/profile';
+import { formatLoad, fromDisplay, toDisplay } from '../../engine/units';
 
 type Tab = 'exercises' | 'body' | 'pullup' | 'weeks';
 const TABS: { id: Tab; label: string }[] = [
@@ -29,7 +32,10 @@ function rememberedTab(): Tab {
 export function ProgressScreen() {
   const db = getDb();
   const [data, setData] = useState<ProgressData | null>(null);
-  const [tab, setTab] = useState<Tab>(rememberedTab);
+  const { profile } = useProfile();
+  const tabs = TABS.filter((t) => t.id !== 'pullup' || hasGoal(profile, 'first-pull-up'));
+  const [chosen, setTab] = useState<Tab>(rememberedTab);
+  const tab = tabs.some((t) => t.id === chosen) ? chosen : 'exercises';
   const [version, setVersion] = useState(0);
 
   useEffect(() => {
@@ -53,7 +59,7 @@ export function ProgressScreen() {
     <section className="screen progress">
       <h1>Progress</h1>
       <div className="tabs" role="tablist">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={tab === t.id ? '' : 'secondary'} onClick={() => choose(t.id)}>
             {t.label}
           </button>
@@ -75,6 +81,7 @@ export function ProgressScreen() {
 }
 
 function ExercisesTab({ data }: { data: ProgressData }) {
+  const unit = useUnit();
   const done = new Set(data.sessions.filter((s) => s.status === 'completed').map((s) => s.id));
   const withHistory = [...data.exercises.values()]
     .filter((e) => data.sets.some((s) => s.exerciseId === e.id && s.completed && done.has(s.sessionId)))
@@ -82,8 +89,8 @@ function ExercisesTab({ data }: { data: ProgressData }) {
   const [id, setId] = useState<string>(() => withHistory.find((e) => e.id === 'assisted-pull-up')?.id ?? withHistory[0]?.id ?? '');
   if (!withHistory.length) return <div className="card"><p className="muted">Finish a workout and your exercise history appears here.</p></div>;
   const exercise = data.exercises.get(id) ?? withHistory[0]!;
-  const history = exerciseHistory(data.sessions, data.sets, exercise);
-  const series = exerciseSeries(history, exercise);
+  const history = exerciseHistory(data.sessions, data.sets, exercise, unit);
+  const series = exerciseSeries(history, exercise, unit);
 
   return (
     <>
@@ -118,7 +125,8 @@ function ExercisesTab({ data }: { data: ProgressData }) {
 }
 
 function ExerciseChart({ exercise, data }: { exercise: Exercise; data: ProgressData }) {
-  const s = exerciseSeries(exerciseHistory(data.sessions, data.sets, exercise), exercise);
+  const unit = useUnit();
+  const s = exerciseSeries(exerciseHistory(data.sessions, data.sets, exercise, unit), exercise, unit);
   return (
     <LineChart
       title={`${exercise.name}: ${s.title.toLowerCase()}`}
@@ -131,6 +139,8 @@ function ExerciseChart({ exercise, data }: { exercise: Exercise; data: ProgressD
 
 function BodyTab({ data, onChange }: { data: ProgressData; onChange: () => void }) {
   const db = getDb();
+  const unit = useUnit();
+  const w = (kg: number) => formatLoad(kg, unit);
   const [date, setDate] = useState(today());
   const [kg, setKg] = useState<number | null>(null);
   const [problems, setProblems] = useState<string[]>([]);
@@ -139,7 +149,7 @@ function BodyTab({ data, onChange }: { data: ProgressData; onChange: () => void 
   const latest = data.bodyWeights.at(-1);
 
   async function save() {
-    const p = await saveBodyWeight(db, { date, kg: kg ?? NaN }, today());
+    const p = await saveBodyWeight(db, { date, kg: kg === null ? NaN : fromDisplay(kg, unit) }, today());
     setProblems(p);
     if (!p.length) {
       setKg(null);
@@ -150,17 +160,17 @@ function BodyTab({ data, onChange }: { data: ProgressData; onChange: () => void 
   return (
     <>
       <div className="stats">
-        <div className="stat"><span className="muted small">Latest</span><strong>{latest ? `${latest.kg} kg` : '–'}</strong><span className="muted small">{latest ? niceDate(latest.date) : ''}</span></div>
-        <div className="stat"><span className="muted small">This week's average</span><strong>{weeks.at(-1) ? `${weeks.at(-1)!.average} kg` : '–'}</strong><span className="muted small">{weeks.at(-1) ? `${weeks.at(-1)!.count} weigh-in${weeks.at(-1)!.count === 1 ? '' : 's'}` : ''}</span></div>
-        <div className="stat"><span className="muted small">vs last week</span><strong>{change === null ? '–' : `${change > 0 ? '+' : change < 0 ? '−' : '±'}${Math.abs(change)} kg`}</strong><span className="muted small">weekly average</span></div>
+        <div className="stat"><span className="muted small">Latest</span><strong>{latest ? w(latest.kg) : '–'}</strong><span className="muted small">{latest ? niceDate(latest.date) : ''}</span></div>
+        <div className="stat"><span className="muted small">This week's average</span><strong>{weeks.at(-1) ? w(weeks.at(-1)!.average) : '–'}</strong><span className="muted small">{weeks.at(-1) ? `${weeks.at(-1)!.count} weigh-in${weeks.at(-1)!.count === 1 ? '' : 's'}` : ''}</span></div>
+        <div className="stat"><span className="muted small">vs last week</span><strong>{change === null ? '–' : `${change > 0 ? '+' : change < 0 ? '−' : '±'}${w(Math.abs(change))}`}</strong><span className="muted small">weekly average</span></div>
       </div>
       <div className="card">
         <LineChart
           title="Body weight"
-          unit="kg"
+          unit={unit}
           series={[
-            { name: 'Weigh-ins', color: 'var(--series-1)', line: false, points: data.bodyWeights.map((b) => ({ x: b.date, y: b.kg, label: `${b.kg} kg` })) },
-            { name: 'Weekly average', color: 'var(--series-2)', points: weeks.map((w) => ({ x: [addDays(w.weekStart, 3), today()].sort()[0]!, y: w.average, label: `${w.average} kg avg (${w.count})` })) },
+            { name: 'Weigh-ins', color: 'var(--series-1)', line: false, points: data.bodyWeights.map((b) => ({ x: b.date, y: toDisplay(b.kg, unit), label: w(b.kg) })) },
+            { name: 'Weekly average', color: 'var(--series-2)', points: weeks.map((w) => ({ x: [addDays(w.weekStart, 3), today()].sort()[0]!, y: toDisplay(w.average, unit), label: `${formatLoad(w.average, unit)} avg (${w.count})` })) },
           ]}
         />
         <p className="muted small">Weigh in the morning, after the toilet, before food, 2–3× a week. Judge fat loss on the weekly average over 3–4 weeks.</p>
@@ -169,7 +179,7 @@ function BodyTab({ data, onChange }: { data: ProgressData; onChange: () => void 
         <h2>Add a weigh-in</h2>
         <div className="set-row">
           <label className="field"><span>Date</span><input type="date" value={date} max={today()} onChange={(e) => setDate(e.target.value)} /></label>
-          <NumberField key={data.bodyWeights.length} label="kg" value={kg} onCommit={setKg} />
+          <NumberField key={data.bodyWeights.length} label={unit} value={kg} onCommit={setKg} />
         </div>
         {problems.length > 0 && <p className="notice error">{problems.join('\n')}</p>}
         <button type="button" onClick={() => void save()}>Save weigh-in</button>
@@ -181,7 +191,7 @@ function BodyTab({ data, onChange }: { data: ProgressData; onChange: () => void 
             {[...data.bodyWeights].reverse().map((b) => (
               <li key={b.date} className="row">
                 <span>{niceDate(b.date)}</span>
-                <strong>{b.kg} kg</strong>
+                <strong>{w(b.kg)}</strong>
                 <button type="button" className="link danger" onClick={() => { if (window.confirm(`Delete the weigh-in on ${niceDate(b.date)}?`)) void deleteBodyWeight(db, b.date).then(onChange); }}>Delete</button>
               </li>
             ))}
@@ -193,7 +203,8 @@ function BodyTab({ data, onChange }: { data: ProgressData; onChange: () => void 
 }
 
 function PullUpTab({ data }: { data: ProgressData }) {
-  const status = pullUpStatus(data.sessions, data.sets);
+  const unit = useUnit();
+  const status = pullUpStatus(data.sessions, data.sets, unit);
   const ex = (id: string) => data.exercises.get(id);
   return (
     <>
@@ -213,7 +224,7 @@ function PullUpTab({ data }: { data: ProgressData }) {
             </li>
           ))}
         </ul>
-        <p className="muted small">A strict pull-up: from a still dead hang, chin clearly over the bar, controlled lowering, no kip or swing. Every kg of fat lost also makes it easier.</p>
+        <p className="muted small">A strict pull-up: from a still dead hang, chin clearly over the bar, controlled lowering, no kip or swing. Every bit of fat lost also makes it easier.</p>
       </div>
       {['assisted-pull-up', 'assisted-negative-pull-up', 'dead-hang', 'scapular-pull-up'].map((id) => {
         const e = ex(id);

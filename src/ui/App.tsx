@@ -1,5 +1,6 @@
 import { HashRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { ErrorBoundary } from './ErrorBoundary';
+import { ProfileProvider } from './profile';
 import { MoreScreen } from './screens/MoreScreen';
 import { SessionScreen } from './screens/SessionScreen';
 import { TodayScreen } from './screens/TodayScreen';
@@ -22,6 +23,7 @@ export function App() {
     <HashRouter>
       <main className="content">
         <ErrorBoundary>
+        <ProfileProvider>
         <Routes>
           <Route path="/today" element={<TodayScreen />} />
           <Route path="/session/:id" element={<SessionScreen />} />
@@ -32,6 +34,7 @@ export function App() {
           <Route path="/more" element={<MoreScreen />} />
           <Route path="*" element={<Navigate to="/today" replace />} />
         </Routes>
+        </ProfileProvider>
         </ErrorBoundary>
       </main>
       <nav className="tabbar">

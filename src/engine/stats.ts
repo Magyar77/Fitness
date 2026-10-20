@@ -4,9 +4,9 @@
 import { addDays, weekStart, type IsoDate } from './dates';
 import type { BodyWeightEntry, Exercise, Prescription, SetLog, WeekPlan, WorkoutSession } from './model';
 import { summarizeSets } from './logging';
+import { formatLoad, toDisplay, type Unit } from './units';
 
 const round1 = (v: number) => Math.round(v * 10) / 10;
-const kg = (v: number) => `${Number(v.toFixed(2))} kg`;
 
 // ---------------------------------------------------------------------------
 // Exercise history
@@ -20,7 +20,7 @@ export interface HistoryEntry {
 }
 
 /** Completed sessions that include completed sets of this exercise, oldest first. */
-export function exerciseHistory(sessions: WorkoutSession[], sets: SetLog[], exercise: Exercise): HistoryEntry[] {
+export function exerciseHistory(sessions: WorkoutSession[], sets: SetLog[], exercise: Exercise, unit: Unit = 'kg'): HistoryEntry[] {
   const byId = new Map(sessions.filter((s) => s.status === 'completed').map((s) => [s.id, s]));
   const grouped = new Map<string, SetLog[]>();
   for (const s of sets) {
@@ -31,7 +31,7 @@ export function exerciseHistory(sessions: WorkoutSession[], sets: SetLog[], exer
     .map(([id, list]) => {
       const session = byId.get(id)!;
       const ordered = list.sort((a, b) => (a.slotKey ?? '').localeCompare(b.slotKey ?? '') || a.setIndex - b.setIndex);
-      return { date: session.date, sessionId: id, templateCode: session.templateCode, sets: ordered, summary: summarizeSets(ordered, exercise) };
+      return { date: session.date, sessionId: id, templateCode: session.templateCode, sets: ordered, summary: summarizeSets(ordered, exercise, unit) };
     })
     .sort((a, b) => a.date.localeCompare(b.date) || a.sessionId.localeCompare(b.sessionId));
 }
@@ -68,8 +68,9 @@ export function metricFor(e: Exercise): Metric {
   return 'reps';
 }
 
-/** One point per session: the heaviest load (least assistance, most reps, longest hold) and what was done with it. */
-export function exerciseSeries(history: HistoryEntry[], e: Exercise): Series {
+/** One point per session: the heaviest load (least assistance, most reps, longest hold) and what was done with it. Load values are in `unit`. */
+export function exerciseSeries(history: HistoryEntry[], e: Exercise, unit: Unit = 'kg'): Series {
+  const kg = (v: number) => formatLoad(v, unit);
   const metric = metricFor(e);
   const points: SeriesPoint[] = [];
   for (const h of history) {
@@ -108,15 +109,15 @@ export function exerciseSeries(history: HistoryEntry[], e: Exercise): Series {
         label = metric === 'duration' ? `${value} min` : secs.map((t) => `${t} s`).join(', ');
       }
     }
-    if (value !== null) points.push({ date: h.date, sessionId: h.sessionId, value, label, work });
+    if (value !== null) points.push({ date: h.date, sessionId: h.sessionId, value: metric === 'load' || metric === 'assist' ? toDisplay(value, unit) : value, label, work });
   }
   const lowerIsBetter = metric === 'assist';
   // Best = best value; on a tie, more work at that value; on a further tie, the more recent.
   const better = (p: SeriesPoint, b: SeriesPoint) => (p.value !== b.value ? (lowerIsBetter ? p.value < b.value : p.value > b.value) : p.work >= b.work);
   const best = points.reduce<SeriesPoint | null>((b, p) => (!b || better(p, b) ? p : b), null);
   const titles: Record<Metric, [string, string]> = {
-    load: ['Heaviest weight', 'kg'],
-    assist: ['Assistance used (less is better)', 'kg'],
+    load: ['Heaviest weight', unit],
+    assist: ['Assistance used (less is better)', unit],
     reps: ['Best set (reps)', 'reps'],
     time: ['Longest hold', 's'],
     distance: ['Distance', 'm'],
@@ -208,7 +209,8 @@ function latestSession(sessions: WorkoutSession[], sets: SetLog[], exerciseId: s
 }
 
 /** The four steps from the coaching document, checked against what was actually logged. */
-export function pullUpStatus(sessions: WorkoutSession[], sets: SetLog[]): PullUpStatus {
+export function pullUpStatus(sessions: WorkoutSession[], sets: SetLog[], unit: Unit = 'kg'): PullUpStatus {
+  const kg = (v: number) => formatLoad(v, unit);
   const completedIds = new Set(sessions.filter((s) => s.status === 'completed').map((s) => s.id));
   const date = (id: string) => sessions.find((s) => s.id === id)?.date ?? null;
 
@@ -252,7 +254,7 @@ export function pullUpStatus(sessions: WorkoutSession[], sets: SetLog[]): PullUp
     {
       id: 'assisted',
       name: 'Assisted pull-ups',
-      target: '3 × 8 at ≤ 20 kg assistance',
+      target: `3 × 8 at ≤ ${unit === 'kg' ? '20 kg' : '45 lb'} assistance`,
       current: ast && astAssist !== null && Number.isFinite(astAssist) ? `${astAtLoad.map((s) => s.reps ?? '?').join('/')} at ${kg(astAssist)} assist` : 'no record yet',
       met: astAssist !== null && astAssist <= 20.5 && astAtLoad.filter((s) => (s.reps ?? 0) >= 8).length >= 3,
       date: ast?.date ?? null,
@@ -303,16 +305,20 @@ export function recentProgress(prescriptions: Prescription[], nameOf: (scope: st
 
 export interface CoachingInput {
   today: IsoDate;
+  unit?: Unit;
   lastSession: { session: WorkoutSession; sets: SetLog[] } | null;
   pending: number;
   bodyWeights: BodyWeightEntry[];
-  pullUp: PullUpStatus;
+  /** null when the first pull-up is not one of the goals. */
+  pullUp: PullUpStatus | null;
+  /** Remind about weighing in (fat-loss goal, or already logging body weight). Default true. */
+  trackBodyWeight?: boolean;
 }
 
 /** A few rule-based notes for the dashboard, most important first. */
 export function coachingNotes(input: CoachingInput): string[] {
   const notes: string[] = [];
-  if (input.pullUp.readyToTest) notes.push('All pull-up milestones are met: test a strict pull-up fresh at the start of your next C session.');
+  if (input.pullUp?.readyToTest) notes.push('All pull-up milestones are met: test a strict pull-up fresh at the start of your next C session.');
   if (input.pending > 0) notes.push(`${input.pending} recommendation${input.pending === 1 ? '' : 's'} need${input.pending === 1 ? 's' : ''} your OK before the targets change.`);
 
   const last = input.lastSession;
@@ -325,19 +331,20 @@ export function coachingNotes(input: CoachingInput): string[] {
   }
 
   const thisWeek = input.bodyWeights.filter((b) => weekStart(b.date) === weekStart(input.today)).length;
-  if (thisWeek === 0) notes.push('No body weight logged this week. Weigh 2–3 mornings (after the toilet, before food) for a reliable weekly average.');
+  if (thisWeek === 0 && input.trackBodyWeight !== false) notes.push('No body weight logged this week. Weigh 2–3 mornings (after the toilet, before food) for a reliable weekly average.');
   const change = weeklyChange(weeklyAverages(input.bodyWeights));
+  const w = (v: number) => formatLoad(Math.abs(v), input.unit ?? 'kg');
   if (change !== null) {
     notes.push(
       change < 0
-        ? `Weekly average body weight is down ${Math.abs(change)} kg. Judge fat loss over 3–4 weeks, not single days.`
+        ? `Weekly average body weight is down ${w(change)}. Judge fat loss over 3–4 weeks, not single days.`
         : change > 0
-          ? `Weekly average body weight is up ${change} kg. One week is noise; look at the 3–4 week trend.`
+          ? `Weekly average body weight is up ${w(change)}. One week is noise; look at the 3–4 week trend.`
           : 'Weekly average body weight is unchanged from last week.',
     );
   }
 
-  const next = input.pullUp.milestones.find((m) => !m.met);
-  if (next && !input.pullUp.readyToTest) notes.push(`Pull-up path: next milestone is ${next.name.toLowerCase()}, ${next.target} (now: ${next.current}).`);
+  const next = input.pullUp?.milestones.find((m) => !m.met);
+  if (next && !input.pullUp?.readyToTest) notes.push(`Pull-up path: next milestone is ${next.name.toLowerCase()}, ${next.target} (now: ${next.current}).`);
   return notes;
 }

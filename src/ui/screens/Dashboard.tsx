@@ -6,6 +6,9 @@ import { addDays, weekStart } from '../../engine/dates';
 import type { WeekPlanEntry, WorkoutTemplate } from '../../engine/model';
 import { coachingNotes, pullUpStatus, recentProgress, weeklyAverages, weeklyChange } from '../../engine/stats';
 import { niceDate } from '../dates';
+import { useProfile } from '../profile';
+import { hasGoal } from '../../data/profile';
+import { formatLoad } from '../../engine/units';
 
 interface Props {
   date: string;
@@ -16,6 +19,9 @@ interface Props {
 /** Below today's workout: notes, what's next, recent progress and headline numbers. */
 export function Dashboard({ date, templates, pending }: Props) {
   const db = getDb();
+  const { profile } = useProfile();
+  const unit = profile.unit;
+  const pullUpGoal = hasGoal(profile, 'first-pull-up');
   const [data, setData] = useState<ProgressData | null>(null);
 
   useEffect(() => {
@@ -30,13 +36,15 @@ export function Dashboard({ date, templates, pending }: Props) {
 
   const completed = data.sessions.filter((s) => s.status === 'completed').sort((a, b) => (a.finishedAt ?? a.date).localeCompare(b.finishedAt ?? b.date));
   const last = completed.at(-1);
-  const pullUp = pullUpStatus(data.sessions, data.sets);
+  const pullUp = pullUpStatus(data.sessions, data.sets, unit);
   const notes = coachingNotes({
     today: date,
+    unit,
     lastSession: last ? { session: last, sets: data.sets.filter((s) => s.sessionId === last.id) } : null,
     pending,
     bodyWeights: data.bodyWeights,
-    pullUp,
+    pullUp: pullUpGoal ? pullUp : null,
+    trackBodyWeight: hasGoal(profile, 'lose-fat') || data.bodyWeights.length > 0,
   }).filter((n) => !n.includes('need your OK')); // the pending card above already says this
 
   const thisWeek = weekStart(date);
@@ -59,19 +67,19 @@ export function Dashboard({ date, templates, pending }: Props) {
   return (
     <>
       <div className="stats">
-        <Link to="/progress" className="stat">
+        {pullUpGoal && <Link to="/progress" className="stat">
           <span className="muted small">Pull-up path</span>
           <strong>{met}/4</strong>
           <span className="muted small">{pullUp.readyToTest ? 'ready to test' : 'milestones'}</span>
-        </Link>
+        </Link>}
         <Link to="/progress" className="stat">
           <span className="muted small">Avg body weight</span>
-          <strong>{latestWeek ? `${latestWeek.average} kg` : '–'}</strong>
+          <strong>{latestWeek ? formatLoad(latestWeek.average, unit) : '–'}</strong>
           <span className="muted small">
             {!latestWeek
               ? 'no weigh-ins yet'
               : latestWeek.weekStart === thisWeek
-                ? change === null ? 'this week' : `this week, ${change > 0 ? '+' : change < 0 ? '−' : '±'}${Math.abs(change)} kg`
+                ? change === null ? 'this week' : `this week, ${change > 0 ? '+' : change < 0 ? '−' : '±'}${formatLoad(Math.abs(change), unit)}`
                 : `week of ${niceDate(latestWeek.weekStart)}`}
           </span>
         </Link>

@@ -4,6 +4,7 @@
 import { daysBetween } from '../dates';
 import type { Range, SetLog, SlotTarget } from '../model';
 import { heavier, lighter, reduced, sameLoad } from './loads';
+import { formatLoad, type Unit } from '../units';
 import {
   RULESET_VERSION,
   type Decision,
@@ -33,7 +34,9 @@ interface Ctx {
 // ---------------------------------------------------------------------------
 // Formatting helpers
 
-const kg = (v: number) => `${Number.isInteger(v) ? v : Number(v.toFixed(2))} kg`;
+// Set by evaluateSlot for the duration of one (synchronous) evaluation.
+let unit: Unit = 'kg';
+const kg = (v: number) => formatLoad(v, unit);
 const span = (r: { min: number; max: number }) => (r.min === r.max ? `${r.min}` : `${r.min}–${r.max}`);
 const list = (xs: (number | null | undefined)[]) => xs.map((x) => x ?? '?').join('/');
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -91,7 +94,11 @@ function loadRule(ctx: Ctx, key: LoadKey): RuleResult {
   const reps = ws.map(counted);
   const loadText = assisted ? `${kg(load)} assist` : kg(load);
   const rangeText = `${prescribed} × ${span(t)}`;
-  const step = assisted ? undefined : slot.rule.id === 'load_double' ? slot.rule.stepKg : undefined;
+  // A program's step (e.g. bench +2.5 kg) snapped onto the gym's increments, so it stays
+  // 2.5 kg in kg but becomes a whole 5 lb with 5 lb plates (and 5 kg → 10 lb).
+  const ruleStep = assisted ? undefined : slot.rule.id === 'load_double' ? slot.rule.stepKg : undefined;
+  const gymStep = equipment?.kind === 'step' ? equipment.stepKg ?? null : null;
+  const step = ruleStep && gymStep ? Math.max(1, Math.round(ruleStep / gymStep)) * gymStep : ruleStep;
   const dataIssue = ws.some((s) => s.quality !== 'confirmed');
 
   const harder = (): number | null =>
@@ -453,6 +460,15 @@ function guards(ctx: Ctx): GuardResult {
 // ---------------------------------------------------------------------------
 
 export function evaluateSlot(input: EvaluateInput): Decision {
+  unit = input.settings.unit ?? 'kg';
+  try {
+    return evaluate(input);
+  } finally {
+    unit = 'kg';
+  }
+}
+
+function evaluate(input: EvaluateInput): Decision {
   const { slot } = input;
   const latest = input.history.at(-1);
   const base = {

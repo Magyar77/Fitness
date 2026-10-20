@@ -5,7 +5,8 @@ import type { EquipmentProfile } from '../model';
 /** Values closer than this are treated as the same pin (logs are rounded). */
 const SAME_PIN_KG = 0.6;
 
-const round = (kg: number) => Math.round(kg * 100) / 100;
+// 0.0001 kg precision: whole-pound steps never drift; display rounding happens in units.ts.
+const round = (kg: number) => Math.round(kg * 10000) / 10000;
 
 /** Next heavier load, or null when the increment is unknown ("next pin"). */
 export function heavier(profile: EquipmentProfile | undefined, current: number, stepKg?: number | null): number | null {

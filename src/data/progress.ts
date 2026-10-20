@@ -42,7 +42,7 @@ export function validateBodyWeight(date: IsoDate, kg: number | null, today: IsoD
   const problems: string[] = [];
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) problems.push('Choose a date.');
   else if (date > today) problems.push("The date can't be in the future.");
-  if (kg === null || !(kg > 30 && kg < 300)) problems.push('Enter your weight in kg (30–300).');
+  if (kg === null || !(kg > 30 && kg < 300)) problems.push('Enter your weight (30–300 kg / 66–660 lb).');
   return problems;
 }
 
@@ -50,7 +50,7 @@ export function validateBodyWeight(date: IsoDate, kg: number | null, today: IsoD
 export async function saveBodyWeight(db: FitnessDB, entry: { date: IsoDate; kg: number; conditions?: string }, today: IsoDate): Promise<string[]> {
   const problems = validateBodyWeight(entry.date, entry.kg, today);
   if (problems.length) return problems;
-  await db.bodyWeights.put({ date: entry.date, kg: Math.round(entry.kg * 10) / 10, ...(entry.conditions?.trim() ? { conditions: entry.conditions.trim() } : {}), source: 'manual' });
+  await db.bodyWeights.put({ date: entry.date, kg: Math.round(entry.kg * 100) / 100, ...(entry.conditions?.trim() ? { conditions: entry.conditions.trim() } : {}), source: 'manual' });
   return [];
 }
 
