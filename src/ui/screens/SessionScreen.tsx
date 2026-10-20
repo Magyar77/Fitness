@@ -5,7 +5,9 @@ import { addDiscomfort, addSet, discardSession, exerciseById, finishSession, fin
 import { allExercises } from '../../data/custom';
 import { similarExercises } from '../../engine/library/builder';
 import { acceptDecision, evaluateSession, overrideDecision, rejectDecision, undoDecision } from '../../data/recommendations';
-import { slotSummary, summarizeSets } from '../../engine/logging';
+import { nextSetText, slotSummary, summarizeSets } from '../../engine/logging';
+import { cancelRestAlert, canNotify, clearRestNotification, enableNotifications, loadRestPrefs, primeAudio, scheduleRestAlert } from '../rest/alerts';
+import { useWakeLock } from '../rest/wakeLock';
 import type { DecisionRecord, TargetDraft } from '../../engine/progression';
 import type { Discomfort, Exercise, SetLog, WorkoutSession, WorkoutTemplate } from '../../engine/model';
 import { DecisionCard } from '../logger/DecisionCard';
@@ -69,6 +71,21 @@ export function SessionScreen() {
   const [notes, setNotes] = useState('');
   const [minutes, setMinutes] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [prefs, setPrefs] = useState(loadRestPrefs);
+  useWakeLock(prefs.keepAwake && data?.session.status === 'in_progress');
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void clearRestNotification();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
+  // The alert outlives this screen (module timer), so it is replaced or cancelled, never cleaned up here.
+  const nextText = data ? nextSetText(data.template.slots, sets, (slot) => (data.session.swaps?.[slot.slotKey] && data.exercises.get(data.session.swaps[slot.slotKey]!)?.name) || slot.name) : '';
+  useEffect(() => {
+    if (restEndsAt === null) cancelRestAlert();
+    else scheduleRestAlert(restEndsAt, nextText);
+  }, [restEndsAt, nextText]);
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(t);
@@ -133,6 +150,7 @@ export function SessionScreen() {
     setSets((all) => all.map((s) => (s.id === next.id ? next : s)));
     persist(saveSet(db, next));
     if (prev && !prev.completed && next.completed) {
+      primeAudio(); // a tap: browsers allow the rest beep from now on
       const slot = data?.template.slots.find((s) => s.slotKey === next.slotKey);
       if (slot?.restSec) setRest(Date.now() + slot.restSec.min * 1000);
     }
@@ -330,7 +348,14 @@ export function SessionScreen() {
       )}
 
       {/* Keyed so each new rest starts with a fresh clock (no stale first frame). */}
-      {!completed && <RestTimer key={restEndsAt ?? 'none'} endsAt={restEndsAt} onChange={setRest} />}
+      {!completed && (
+        <RestTimer
+          key={restEndsAt ?? 'none'}
+          endsAt={restEndsAt}
+          onChange={setRest}
+          onEnableAlerts={canNotify() && !prefs.notify && Notification.permission !== 'denied' ? () => void enableNotifications().then(() => setPrefs(loadRestPrefs())) : undefined}
+        />
+      )}
     </section>
   );
 }

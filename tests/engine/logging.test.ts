@@ -75,3 +75,17 @@ describe('summarizeSets ("last time")', () => {
     expect(summarizeSets(p.sets, ex('A-03'))).toBe('nothing logged');
   });
 });
+
+describe('next set after a rest', () => {
+  it('names the first set not done yet, in workout order', async () => {
+    const { nextSetText } = await import('../../src/engine/logging');
+    const slots = [
+      { slotKey: 'b', order: 2, name: 'Row' },
+      { slotKey: 'a', order: 1, name: 'Press' },
+    ] as unknown as Parameters<typeof nextSetText>[0];
+    const set = (slotKey: string, setIndex: number, completed: boolean) => ({ slotKey, setIndex, completed }) as unknown as Parameters<typeof nextSetText>[1][number];
+    expect(nextSetText(slots, [set('a', 1, true), set('a', 2, false), set('b', 1, false)])).toBe('Next: Press, set 2 of 2');
+    expect(nextSetText(slots, [set('a', 1, true), set('b', 1, true), set('b', 2, false)], (s) => `${s.name}!`)).toBe('Next: Row!, set 2 of 2');
+    expect(nextSetText(slots, [set('a', 1, true)])).toMatch(/^All sets done/);
+  });
+});

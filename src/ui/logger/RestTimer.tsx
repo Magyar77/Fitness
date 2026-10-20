@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface Props {
   endsAt: number | null;
   onChange: (endsAt: number | null) => void;
+  /** Offers to turn on notifications for the end of a rest. */
+  onEnableAlerts?: () => void;
 }
 
 function mmss(ms: number): string {
@@ -11,20 +13,13 @@ function mmss(ms: number): string {
 }
 
 /** Bar above the tab bar counting down the rest after a completed set. */
-export function RestTimer({ endsAt, onChange }: Props) {
+export function RestTimer({ endsAt, onChange, onEnableAlerts }: Props) {
   const [now, setNow] = useState(() => Date.now());
-  const buzzed = useRef<number | null>(null);
 
+  // The beep, vibration and notification come from the rest alert (rest/alerts.ts).
   useEffect(() => {
     if (endsAt === null) return;
-    const id = setInterval(() => {
-      const t = Date.now();
-      setNow(t);
-      if (t >= endsAt && buzzed.current !== endsAt) {
-        buzzed.current = endsAt;
-        navigator.vibrate?.([200, 100, 200]);
-      }
-    }, 250);
+    const id = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(id);
   }, [endsAt]);
 
@@ -34,6 +29,7 @@ export function RestTimer({ endsAt, onChange }: Props) {
     <div className={`rest-bar ${left <= 0 ? 'over' : ''}`} role="timer" aria-live="polite">
       <span>{left > 0 ? `Rest ${mmss(left)}` : 'Rest over: next set'}</span>
       <div className="buttons">
+        {left > 0 && onEnableAlerts && <button type="button" className="secondary" onClick={onEnableAlerts} title="Get a notification when the rest is over">Alert me</button>}
         {left > 0 && <button type="button" className="secondary" onClick={() => onChange(endsAt + 30_000)}>+30 s</button>}
         <button type="button" className="secondary" onClick={() => onChange(null)}>{left > 0 ? 'Skip' : 'Close'}</button>
       </div>

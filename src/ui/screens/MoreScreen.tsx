@@ -4,6 +4,7 @@ import { getDb } from '../../data/db';
 import { backupReminder, checkBackup, importBundle, newerThanBackup, restoreBackup } from '../../data/backup';
 import { saveBackup } from '../backupActions';
 import { EquipmentForm } from '../settings/EquipmentForm';
+import { WorkoutAlertsForm } from '../settings/WorkoutAlertsForm';
 import { InstallCard } from '../InstallCard';
 import { ProfileForm } from '../settings/ProfileForm';
 import { bodyWeightCsv, setsCsv } from '../../data/csv';
@@ -186,6 +187,11 @@ export function MoreScreen() {
           <button type="button" className="secondary" onClick={() => importInput.current?.click()} disabled={busy}>Personal Fitness data file…</button>
         </div>
         <input ref={importInput} type="file" accept="application/json,.json" hidden onChange={(e) => void onFile(e, 'import')} />
+      </div>
+
+      <div className="card">
+        <h2>During workouts</h2>
+        <WorkoutAlertsForm />
       </div>
 
       <div className="card">

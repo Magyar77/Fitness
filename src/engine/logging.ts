@@ -105,3 +105,13 @@ export function summarizeSets(sets: SetLog[], exercise: Exercise, weightUnit: Un
   else body = done.map((s) => `${typeof s[loadKey] === 'number' ? kg(s[loadKey] as number) : '?'}${suffix} × ${value(s)}${unit}`).join(', ');
   return body + rirSummary(done);
 }
+
+/** What comes after a rest: "Next: Lat pulldown, set 2 of 3", or that everything is done. */
+export function nextSetText(slots: TemplateSlot[], sets: SetLog[], names: (slot: TemplateSlot) => string = (s) => s.name): string {
+  for (const slot of [...slots].sort((a, b) => a.order - b.order)) {
+    const mine = sets.filter((s) => s.slotKey === slot.slotKey).sort((a, b) => a.setIndex - b.setIndex);
+    const at = mine.findIndex((s) => !s.completed);
+    if (at >= 0) return `Next: ${names(slot)}, set ${at + 1} of ${mine.length}`;
+  }
+  return 'All sets done: finish the workout when you are ready.';
+}

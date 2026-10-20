@@ -32,6 +32,8 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png}'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        // Opens the app when the "rest is over" notification is tapped.
+        importScripts: ['sw-rest.js'],
         // Exercise photos are fetched when first viewed, then kept for offline use.
         runtimeCaching: [
           {
