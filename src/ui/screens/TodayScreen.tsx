@@ -8,6 +8,7 @@ import type { DecisionRecord } from '../../engine/progression';
 import { weekStart } from '../../engine/dates';
 import type { ProgramVersion, WeekPlan, WorkoutSession, WorkoutTemplate } from '../../engine/model';
 import { clock, niceDate, today } from '../dates';
+import { Dashboard } from './Dashboard';
 
 interface State {
   program: ProgramVersion;
@@ -114,6 +115,8 @@ export function TodayScreen() {
       {!open && !todays.length && isRest && (
         <div className="card"><h2>Rest day</h2><p className="muted">You planned rest today. An easy walk or ride is fine.</p></div>
       )}
+
+      <Dashboard date={date} templates={byCode} pending={pending.length} />
 
       <div className="card">
         <h2>{open ? 'Other workouts' : todays.length ? 'Or start another workout' : 'Start a workout'}</h2>

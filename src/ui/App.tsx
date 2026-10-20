@@ -4,6 +4,7 @@ import { SessionScreen } from './screens/SessionScreen';
 import { TodayScreen } from './screens/TodayScreen';
 import { WeekScreen } from './screens/WeekScreen';
 import { WorkoutsScreen } from './screens/WorkoutsScreen';
+import { ProgressScreen } from './screens/ProgressScreen';
 import { WorkoutEditor } from './workouts/WorkoutEditor';
 
 const TABS = [
@@ -14,14 +15,6 @@ const TABS = [
   { path: '/more', label: 'More' },
 ] as const;
 
-function Placeholder({ title }: { title: string }) {
-  return (
-    <section className="screen">
-      <h1>{title}</h1>
-      <p className="muted">Coming in a later milestone.</p>
-    </section>
-  );
-}
 
 export function App() {
   return (
@@ -33,7 +26,7 @@ export function App() {
           <Route path="/week" element={<WeekScreen />} />
           <Route path="/log" element={<WorkoutsScreen />} />
           <Route path="/workouts/:code" element={<WorkoutEditor />} />
-          <Route path="/progress" element={<Placeholder title="Progress" />} />
+          <Route path="/progress" element={<ProgressScreen />} />
           <Route path="/more" element={<MoreScreen />} />
           <Route path="*" element={<Navigate to="/today" replace />} />
         </Routes>
