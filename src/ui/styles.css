@@ -304,7 +304,7 @@ button.check, button.icon {
 button.check.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 button.icon.running { color: var(--warn); border-color: var(--warn); }
 .set-more { display: grid; gap: 6px; margin: 6px 0 0 24px; }
-.card-actions { display: flex; justify-content: space-between; }
+.card-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 4px; }
 .pain { display: grid; gap: 8px; margin-top: 8px; }
 
 .fatigue { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
@@ -570,3 +570,10 @@ h2.sub { margin-top: 14px; }
 .name-map li.unmatched { box-shadow: inset 3px 0 0 var(--warn); }
 .name-map select { width: 100%; min-height: 44px; padding: 0 10px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--input); }
 .problems ul { color: var(--warn); }
+
+/* Swap in the logger */
+.swap-panel { background: var(--inset); border-radius: var(--radius-sm); padding: 10px 12px; margin: 6px 0; }
+.swap-list { list-style: none; padding: 0; margin: 6px 0; display: grid; gap: 6px; }
+.swap-list button { width: 100%; height: auto; min-height: 48px; display: grid; gap: 2px; text-align: left; padding: 8px 12px; }
+.swap-list small { color: var(--muted); font-weight: 400; font-size: 12px; }
+button.link.inline { min-height: 0; padding: 0; color: inherit; text-decoration: underline; font-weight: 600; }

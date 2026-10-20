@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getDb } from '../../data/db';
-import { addDiscomfort, addSet, discardSession, exerciseById, finishSession, findTemplate, lastPerformance, removeSet, saveSet } from '../../data/workouts';
+import { addDiscomfort, addSet, discardSession, exerciseById, finishSession, findTemplate, lastForExercise, lastPerformance, removeSet, saveSet, swapExercise } from '../../data/workouts';
+import { allExercises } from '../../data/custom';
+import { similarExercises } from '../../engine/library/builder';
 import { acceptDecision, evaluateSession, overrideDecision, rejectDecision, undoDecision } from '../../data/recommendations';
-import { summarizeSets } from '../../engine/logging';
+import { slotSummary, summarizeSets } from '../../engine/logging';
 import type { DecisionRecord, TargetDraft } from '../../engine/progression';
 import type { Discomfort, Exercise, SetLog, WorkoutSession, WorkoutTemplate } from '../../engine/model';
 import { DecisionCard } from '../logger/DecisionCard';
@@ -18,6 +20,7 @@ interface Loaded {
   exercises: Map<string, Exercise>;
   last: Map<string, { date: string; text: string } | null>;
   decisions: DecisionRecord[];
+  library: Exercise[];
 }
 
 const FATIGUE = ['Very easy', 'Easy', 'Normal', 'Hard', 'Exhausted'];
@@ -72,13 +75,17 @@ export function SessionScreen() {
         const ex = await exerciseById(db, slot.exerciseId);
         if (!ex) continue;
         exercises.set(slot.exerciseId, ex);
-        const perf = await lastPerformance(db, template, slot, session.id);
+        const swapped = session.swaps?.[slot.slotKey];
+        const sub = swapped ? await exerciseById(db, swapped) : undefined;
+        if (sub) exercises.set(sub.id, sub);
+        const perf = sub ? await lastForExercise(db, sub.id, session.id) : await lastPerformance(db, template, slot, session.id);
         const before = perf && perf.session.date <= session.date && perf.session.id !== session.id ? perf : null;
-        last.set(slot.slotKey, before ? { date: niceDate(before.session.date), text: summarizeSets(before.sets, ex, unit, bar) } : null);
+        last.set(slot.slotKey, before ? { date: niceDate(before.session.date), text: summarizeSets(before.sets, sub ?? ex, unit, bar) } : null);
       }
+      const library = session.status === 'in_progress' ? await allExercises(db) : [];
       const rows = (await db.sets.where('sessionId').equals(id).toArray()).sort((a, b) => a.setIndex - b.setIndex);
       const decisions = await db.decisions.where('basisSessionId').equals(id).toArray();
-      return { session, template, exercises, last, rows, decisions };
+      return { session, template, exercises, last, rows, decisions, library };
     })()
       .then(({ rows, ...loaded }) => {
         if (!alive) return;
@@ -145,6 +152,10 @@ export function SessionScreen() {
     }
   }
 
+  async function swap(slotKey: string, exerciseId: string | null) {
+    await act(swapExercise(db, id, slotKey, exerciseId));
+  }
+
   async function discard() {
     if (!window.confirm('Discard this workout and everything logged in it?')) return;
     await discardSession(db, id);
@@ -155,7 +166,11 @@ export function SessionScreen() {
   if (error && !data) return <section className="screen"><p className="notice error">{error}</p><Link to="/today">← Today</Link></section>;
   if (!data) return <section className="screen"><p className="muted">Loading…</p></section>;
 
-  const { session, template, exercises, last, decisions } = data;
+  const { session, template, exercises, last, decisions, library } = data;
+  const swappedTo = (slotKey: string) => {
+    const sub = session.swaps?.[slotKey];
+    return sub ? exercises.get(sub) : undefined;
+  };
   const completed = session.status === 'completed';
   const snapshot = new Map((session.prescriptionSnapshot ?? []).map((e) => [e.slotKey, e.text]));
   const doneCount = sets.filter((s) => s.completed).length;
@@ -206,11 +221,12 @@ export function SessionScreen() {
           {session.notes.map((n) => <p key={n} className="muted">"{n}"</p>)}
           <ul className="summary">
             {template.slots.map((slot) => {
-              const ex = exercises.get(slot.exerciseId);
+              const sub = swappedTo(slot.slotKey);
+              const ex = sub ?? exercises.get(slot.exerciseId);
               if (!ex) return null;
               return (
                 <li key={slot.slotKey}>
-                  <strong>{slot.name}</strong>
+                  <strong>{sub ? `${sub.name} (instead of ${slot.name})` : slot.name}</strong>
                   <span className={sets.some((s) => s.slotKey === slot.slotKey && s.completed) ? '' : 'muted'}>{sets.some((s) => s.slotKey === slot.slotKey && s.completed) ? summarizeSets(sets.filter((s) => s.slotKey === slot.slotKey), ex, unit, bar) : 'skipped'}</span>
                   <span className="muted small">Target: {snapshot.get(slot.slotKey) ?? '–'}</span>
                 </li>
@@ -223,14 +239,20 @@ export function SessionScreen() {
       {!completed && (
         <>
           {template.slots.map((slot) => {
-            const ex = exercises.get(slot.exerciseId);
-            if (!ex) return null;
+            const original = exercises.get(slot.exerciseId);
+            if (!original) return null;
+            const sub = swappedTo(slot.slotKey);
+            const ex = sub ?? original;
             return (
               <ExerciseCard
                 key={slot.slotKey}
                 slot={slot}
                 exercise={ex}
-                target={snapshot.get(slot.slotKey) ?? ''}
+                original={sub ? original : undefined}
+                library={library}
+                swapOptions={similarExercises(original, library, 6)}
+                onSwap={(exerciseId) => void swap(slot.slotKey, exerciseId)}
+                target={sub ? `${slotSummary(slot)}: pick a weight that fits` : snapshot.get(slot.slotKey) ?? ''}
                 last={last.get(slot.slotKey) ?? null}
                 sets={sets.filter((s) => s.slotKey === slot.slotKey)}
                 discomfort={session.discomfort.filter((d) => d.slotKey === slot.slotKey)}

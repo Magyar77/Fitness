@@ -31,7 +31,9 @@ export function performancesFor(
     .filter((s) => s.status === 'completed' && !s.flags.includes('legacyProgram') && bySession.has(s.id))
     .filter((s) => until === undefined || s.date <= until)
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
-    .map((session) => ({ session, sets: [...bySession.get(session.id)!].sort((a, b) => a.setIndex - b.setIndex) }));
+    // A slot done with a swapped-in exercise says nothing about the slot's own exercise.
+    .map((session) => ({ session, sets: bySession.get(session.id)!.filter((s) => !session.swaps?.[s.slotKey!]).sort((a, b) => a.setIndex - b.setIndex) }))
+    .filter((p) => p.sets.length > 0);
 }
 
 /** The active target for a slot (or its link group) on a date; later entries win ties. */

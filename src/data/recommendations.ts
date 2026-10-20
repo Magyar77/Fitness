@@ -74,7 +74,7 @@ export async function evaluateSession(db: FitnessDB, sessionId: string, now = ne
 
   for (const slot of template.slots) {
     const scope = slot.linkGroup ?? slot.slotKey;
-    if (done.has(scope)) continue;
+    if (done.has(scope) || session.swaps?.[slot.slotKey]) continue;
     const keys = progressionKeys(slot, allSlots);
     const sets = await db.sets.where('slotKey').anyOf(keys).toArray();
     if (!sets.some((s) => s.sessionId === sessionId && s.completed)) continue;

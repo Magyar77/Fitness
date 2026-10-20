@@ -236,7 +236,7 @@ export function parseLog(text: string, defaultUnit: 'kg' | 'lb' = 'kg', today?: 
 // ---------------------------------------------------------------------------
 // Exercise names → library
 
-const EQUIPMENT_WORDS = ['barbell', 'dumbbell', 'cable', 'machine', 'kettlebell', 'band', 'smith', 'ezbar', 'trapbar'];
+export const EQUIPMENT_WORDS = ['barbell', 'dumbbell', 'cable', 'machine', 'kettlebell', 'band', 'smith', 'ezbar', 'trapbar'];
 const STOP = new Set(['the', 'a', 'an', 'of', 'with', 'standard', 'regular', 'normal', 'strict', 'exercise']);
 
 /** Lowercase words, singular, with common spellings unified ("Pull Up (Assisted)" → assisted pullup). */

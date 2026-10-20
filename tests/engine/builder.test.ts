@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildFromOptions, jobsForParts, swapSlot, toWorkoutDraft, type BuildOptions } from '../../src/engine/library/builder';
+import { buildFromOptions, jobsForParts, similarExercises, swapSlot, toWorkoutDraft, type BuildOptions } from '../../src/engine/library/builder';
 import { bodyPartsOf } from '../../src/engine/library/groups';
 import { EXERCISES, EXERCISES_BY_ID } from '../../src/engine/library/exercises';
 import { validateWorkout } from '../../src/engine/custom';
@@ -68,5 +68,15 @@ describe('workout builder', () => {
       const d = toWorkoutDraft(buildFromOptions(EXERCISES, opts({ focus })));
       expect(validateWorkout(d, EXERCISES_BY_ID, [])).toEqual([]);
     }
+  });
+
+  it('suggests stand-ins for a swap: same movement, mixing close variants and other equipment', () => {
+    const bench = similarExercises(EXERCISES_BY_ID.get('barbell-bench-press')!, EXERCISES, 6);
+    expect(bench.every((e) => e.pattern === 'horizontal-push' && e.id !== 'barbell-bench-press')).toBe(true);
+    expect(bench.map((e) => e.id)).toContain('db-bench-press');
+    const pulldown = similarExercises(EXERCISES_BY_ID.get('lat-pulldown')!, EXERCISES, 6).map((e) => e.id);
+    expect(pulldown).toContain('pull-up');
+    const plank = similarExercises(EXERCISES_BY_ID.get('plank')!, EXERCISES, 4);
+    expect(plank.slice(0, 3).every((e) => e.measure === 'time')).toBe(true); // timed holds first
   });
 });

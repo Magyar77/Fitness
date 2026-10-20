@@ -1,7 +1,8 @@
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it } from 'vitest';
 import { FitnessDB, ensureSeeded } from '../../src/data/db';
-import { addSet, discardSession, finishSession, inProgressSession, lastPerformance, removeSet, saveSet, startSession } from '../../src/data/workouts';
+import { addSet, discardSession, finishSession, inProgressSession, lastForExercise, lastPerformance, removeSet, saveSet, startSession, swapExercise } from '../../src/data/workouts';
+import { evaluateSession } from '../../src/data/recommendations';
 import { PROGRAM_V2 } from '../../src/engine/program/programV2';
 import type { Prescription, WorkoutTemplate } from '../../src/engine/model';
 
@@ -116,5 +117,35 @@ describe('workout sessions', () => {
     await finishSession(db, done, { fatigue: null, notes: [] });
     await discardSession(db, done);
     expect(await db.sessions.count()).toBe(1);
+  });
+
+  it('swaps an exercise for one workout without touching the progression of that slot', async () => {
+    const db = await freshDb();
+    await db.prescriptions.add(rx({ slotKey: 'A-03', loadKg: 42.5, repTargets: [6, 6, 6, 6], text: '42.5 kg, 4 × 6–8' }));
+    const id = await startSession(db, A, PROGRAM_V2.id, '2026-03-03');
+    const slotSets = async () => (await db.sets.where('sessionId').equals(id).toArray()).filter((x) => x.slotKey === 'A-03').sort((a, b) => a.setIndex - b.setIndex);
+
+    await swapExercise(db, id, 'A-03', 'db-bench-press');
+    expect((await db.sessions.get(id))!.swaps).toEqual({ 'A-03': 'db-bench-press' });
+    expect((await slotSets()).map((x) => [x.exerciseId, x.weightKg, x.reps])).toEqual(Array(4).fill(['db-bench-press', null, 6]));
+
+    // Swapping back restores the planned weights.
+    await swapExercise(db, id, 'A-03', null);
+    expect((await db.sessions.get(id))!.swaps).toEqual({});
+    expect((await slotSets()).map((x) => [x.exerciseId, x.weightKg])).toEqual(Array(4).fill(['barbell-bench-press', 42.5]));
+
+    await swapExercise(db, id, 'A-03', 'db-bench-press');
+    for (const x of await slotSets()) await saveSet(db, { ...x, weightKg: 22.5, reps: 8, rir: { min: 2, max: 2 }, completed: true });
+    await expect(swapExercise(db, id, 'A-03', null)).rejects.toThrow(/Untick/);
+    await finishSession(db, id, { fatigue: 2, notes: [] });
+    const decisions = await evaluateSession(db, id);
+    expect(decisions.some((d) => d.slotKey === 'A-03')).toBe(false);
+    expect(await lastPerformance(db, A, A.slots.find((x) => x.slotKey === 'A-03')!, null)).toBeNull();
+    expect((await lastForExercise(db, 'db-bench-press', 'other'))!.sets.map((x) => x.weightKg)).toEqual([22.5, 22.5, 22.5, 22.5]);
+
+    // Next time, the dumbbell weight is remembered when swapping again.
+    const next = await startSession(db, A, PROGRAM_V2.id, '2026-03-06');
+    await swapExercise(db, next, 'A-03', 'db-bench-press');
+    expect((await db.sets.where('sessionId').equals(next).toArray()).filter((x) => x.slotKey === 'A-03').every((x) => x.weightKg === 22.5)).toBe(true);
   });
 });

@@ -118,6 +118,61 @@ export async function startSession(db: FitnessDB, template: WorkoutTemplate, pro
 }
 
 /** Autosave: writes one set immediately. */
+/** The latest completed sets of an exercise in any workout, for "last time" on a swapped-in exercise. */
+export async function lastForExercise(db: FitnessDB, exerciseId: string, beforeSessionId: string): Promise<{ session: WorkoutSession; sets: SetLog[] } | null> {
+  const sets = (await db.sets.where('exerciseId').equals(exerciseId).toArray()).filter((s) => s.sessionId !== beforeSessionId && s.completed && !s.isWarmup);
+  const sessions = (await db.sessions.bulkGet([...new Set(sets.map((s) => s.sessionId))])).filter((s): s is WorkoutSession => !!s && s.status === 'completed');
+  const latest = sessions.sort((a, b) => b.date.localeCompare(a.date) || (b.finishedAt ?? '').localeCompare(a.finishedAt ?? ''))[0];
+  return latest ? { session: latest, sets: sets.filter((s) => s.sessionId === latest.id).sort((a, b) => a.setIndex - b.setIndex) } : null;
+}
+
+/**
+ * Swaps the exercise of one slot for this workout only (machine taken, no equipment, pain).
+ * The slot's planned sets switch to the new exercise; the slot's own progression ignores them.
+ * Pass the slot's original exercise (or null) to swap back.
+ */
+export async function swapExercise(db: FitnessDB, sessionId: string, slotKey: string, exerciseId: string | null): Promise<void> {
+  const session = await db.sessions.get(sessionId);
+  if (!session || session.status !== 'in_progress') throw new Error('Only a workout in progress can be changed.');
+  const template = await findTemplate(db, session);
+  const slot = template?.slots.find((s) => s.slotKey === slotKey);
+  if (!slot) throw new Error('That exercise is not in this workout.');
+  const target = exerciseId ?? slot.exerciseId;
+  const exercise = await exerciseById(db, target);
+  if (!exercise) throw new Error('Exercise not found.');
+  const sets = (await db.sets.where('sessionId').equals(sessionId).toArray()).filter((s) => s.slotKey === slotKey);
+  if (sets.some((s) => s.completed)) throw new Error('Untick the sets you already did before swapping.');
+
+  const last = target === slot.exerciseId ? null : await lastForExercise(db, target, sessionId);
+  const lastWeight = last?.sets.at(-1)?.weightKg ?? null;
+  const lastAssist = last?.sets.at(-1)?.assistKg ?? null;
+  const original = target === slot.exerciseId ? await exerciseById(db, slot.exerciseId) : null;
+  const rx = original ? activePrescription(await db.prescriptions.toArray(), slot, session.date) : null;
+  const planned = original ? planSets(slot, original, rx, await lastPerformance(db, template!, slot, sessionId)) : [];
+
+  const swaps = { ...(session.swaps ?? {}) };
+  if (target === slot.exerciseId) delete swaps[slotKey];
+  else swaps[slotKey] = target;
+  await db.transaction('rw', db.sets, db.sessions, async () => {
+    for (const [i, s] of sets.entries()) {
+      const fromPlan = planned[i];
+      const sameMeasure = exercise.measure === 'reps';
+      await db.sets.put({
+        ...s,
+        exerciseId: target,
+        ...(fromPlan ?? {
+          weightKg: exercise.loadType === 'assisted_machine' ? null : lastWeight,
+          assistKg: exercise.loadType === 'assisted_machine' ? lastAssist : null,
+          reps: sameMeasure ? s.reps : null,
+          durationSec: null,
+          distanceM: null,
+        }),
+      });
+    }
+    await db.sessions.update(sessionId, { swaps });
+  });
+}
+
 export async function saveSet(db: FitnessDB, set: SetLog): Promise<void> {
   await db.sets.put(set);
 }

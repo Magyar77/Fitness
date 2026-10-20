@@ -6,6 +6,7 @@
 import { defaultSlot, type SlotDraft, type WorkoutDraft } from '../custom';
 import type { Demand, EquipmentKind, Exercise, Muscle, Pattern } from '../model';
 import type { BodyPart } from './groups';
+import { EQUIPMENT_WORDS, nameTokens } from '../import/csvLog';
 
 export type Focus = 'full' | 'upper' | 'lower' | 'push' | 'pull' | 'arms' | 'core' | 'parts';
 export type Setup = 'gym' | 'dumbbells' | 'bodyweight' | 'bands';
@@ -117,7 +118,9 @@ export function jobsFor(o: BuildOptions): Job[] {
 const SKIP = new Set(['scapular-pull-up', 'assisted-negative-pull-up', 'dead-hang', 'bike-or-incline-walk']);
 const LEVEL_RANK: Record<Level, number> = { beginner: 0, intermediate: 1, expert: 2 };
 const ODD_NAME = /\s-\s|\bwith\b|chains|version|variation|smith|\bon\b|reverse band|powerlifting|\(/i;
-const JUMPY = /jump|explosive|plyo|clap/i;
+const JUMPY = /jump|explosive|plyo|clap|speed|jerk|snatch|\bclean\b/i;
+/** Niche or tricky catalog variants that make poor default picks. */
+const AWKWARD = /pullover|around the worlds?|rope climb|london bridges?|kipping|jefferson|off pins|bottoms?.up|anderson|zercher|bradford|tate press|body-up|car drivers/i;
 /** Needs a pull-up or dip bar, which a home-with-bands setup may not have. */
 const NEEDS_BAR = /pull-?up|chin-?up|\bdips?\b|inverted row|muscle.?up|hanging|toes to bar|lever|skin the cat/i;
 
@@ -143,6 +146,7 @@ function score(e: Exercise, j: Job, o: BuildOptions, picked: Exercise[]): number
   // Closer to your level is better: a beginner gets the easy version, an expert the hard one.
   s += e.level ? 1.5 * (1 - Math.abs(LEVEL_RANK[e.level] - LEVEL_RANK[o.level]) / 2) : 0.75;
   if (JUMPY.test(e.name)) s -= 1.5;
+  if (AWKWARD.test(e.name)) s -= 2.5;
   // Main lifts are better as reps than as skill holds (planche, levers, flags).
   if (e.measure === 'time' && j.compound) s -= 2.5;
   if (e.measure === 'time' && e.level === 'expert') s -= 1.5;
@@ -163,6 +167,30 @@ export function candidates(all: Exercise[], j: Job, o: BuildOptions, picked: Exe
     .map((e) => ({ e, s: score(e, j, o, picked) }))
     .sort((a, b) => b.s - a.s || a.e.id.localeCompare(b.e.id))
     .map((x) => x.e);
+}
+
+/** Exercises that can stand in for this one (same movement and main muscle), its listed alternatives first. */
+export function similarExercises(e: Exercise, all: Exercise[], limit = 8): Exercise[] {
+  const j: Job = { id: 'swap', label: 'Swap', patterns: e.pattern ? [e.pattern] : [], muscles: e.muscles?.slice(0, 1) ?? [], compound: e.pattern !== 'isolation' && e.pattern !== 'core' };
+  const byId = new Map(all.map((x) => [x.id, x]));
+  const listed = e.alternatives.map((a) => byId.get(a)).filter((x): x is Exercise => !!x && x.id !== e.id);
+  const open: BuildOptions = { focus: 'full', setup: 'gym', minutes: 60, level: 'intermediate' };
+  const sameJob = j.patterns.length && j.muscles.length ? candidates(all, j, open, [e, ...listed]) : [];
+  // Same way of recording first (reps vs time), so the planned sets still make sense;
+  // then names that share a word with the original ("pulldown", "press", "raise").
+  const words = (n: string) => new Set(nameTokens(n).filter((w) => !EQUIPMENT_WORDS.includes(w)));
+  const own = words(e.name);
+  const shared = (x: Exercise) => [...words(x.name)].filter((w) => own.has(w)).length;
+  // Alternate the closest name with the best general pick, so a taken machine still has other options.
+  const rank = new Map(sameJob.map((x, i) => [x.id, i]));
+  const measureFirst = (a: Exercise, b: Exercise) => Number(a.measure !== e.measure) - Number(b.measure !== e.measure);
+  const byName = [...sameJob].sort((a, b) => measureFirst(a, b) || Math.min(shared(b), 2) - Math.min(shared(a), 2) || rank.get(a.id)! - rank.get(b.id)!);
+  const byScore = [...sameJob].sort((a, b) => measureFirst(a, b) || rank.get(a.id)! - rank.get(b.id)!);
+  const out = [...listed];
+  for (let i = 0; out.length < limit && i < sameJob.length; i++) {
+    for (const x of [byName[i]!, byScore[i]!]) if (out.length < limit && !out.some((o) => o.id === x.id)) out.push(x);
+  }
+  return out;
 }
 
 /** Sets, reps, effort and rest for a pick, by level and job. */

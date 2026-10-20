@@ -272,6 +272,8 @@ export interface WorkoutSession {
   flags: SessionFlag[];
   /** Frozen copy of the targets that applied when the session started. */
   prescriptionSnapshot: SnapshotEntry[] | null;
+  /** Exercises swapped in for this session only: slot key → exercise id. Never drive that slot's progression. */
+  swaps?: Record<string, string>;
 }
 
 export interface WeekPlanEntry {
