@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { getDb } from '../../data/db';
 import { allExercises, draftOf, saveWorkout } from '../../data/custom';
 import { saveProgramWorkout } from '../../data/programs';
@@ -29,6 +29,7 @@ export function WorkoutEditor({ mode = 'custom' }: { mode?: 'custom' | 'program'
   const weightUnit = useUnit();
   const bar = useBar();
   const navigate = useNavigate();
+  const prefill = (useLocation().state as { draft?: WorkoutDraft } | null)?.draft;
   const [exercises, setExercises] = useState<Exercise[] | null>(null);
   const [existing, setExisting] = useState<WorkoutTemplate | undefined>(undefined);
   const [draft, setDraft] = useState<WorkoutDraft>(EMPTY);
@@ -46,7 +47,7 @@ export function WorkoutEditor({ mode = 'custom' }: { mode?: 'custom' | 'program'
         : mode === 'program'
           ? (await currentProgram(db)).templates.find((x) => x.code === code)
           : await db.templates.where('code').equals(code!).first();
-      const d = t ? await draftOf(db, t, today()) : EMPTY;
+      const d = t ? await draftOf(db, t, today()) : (prefill ?? EMPTY);
       return { list, t, d };
     })().then(({ list, t, d }) => {
       if (!alive) return;
@@ -57,7 +58,7 @@ export function WorkoutEditor({ mode = 'custom' }: { mode?: 'custom' | 'program'
     return () => {
       alive = false;
     };
-  }, [db, code, isNew, mode]);
+  }, [db, code, isNew, mode, prefill]);
 
   if (!exercises) return <section className="screen"><p className="muted">Loading…</p></section>;
   if (!isNew && !existing) return <section className="screen"><p className="notice error">Workout not found.</p><Link to="/log">← Workouts</Link></section>;

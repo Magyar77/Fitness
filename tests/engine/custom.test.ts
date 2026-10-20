@@ -22,7 +22,7 @@ function draft(over: Partial<WorkoutDraft> = {}): WorkoutDraft {
 }
 
 describe('library metadata', () => {
-  const app = EXERCISES.filter((e) => !e.id.startsWith('fx-') && !e.id.startsWith('sw-'));
+  const app = EXERCISES.filter((e) => !/^(fx|sw|band)-/.test(e.id));
 
   it('keeps the original exercises, each with a region and the loaded-pulling flag', () => {
     expect(app).toHaveLength(41);

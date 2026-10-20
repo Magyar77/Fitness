@@ -156,7 +156,7 @@ const APP_META: Record<string, { pattern: Pattern; equipmentKind: EquipmentKind;
   'leg-curl': { pattern: 'isolation', equipmentKind: 'machine' },
   'leg-press': { pattern: 'squat', equipmentKind: 'machine' },
   'db-walking-lunge': { pattern: 'lunge', equipmentKind: 'dumbbell' },
-  'back-extension-45': { pattern: 'hinge', equipmentKind: 'bodyweight' },
+  'back-extension-45': { pattern: 'hinge', equipmentKind: 'other' }, // needs a 45° bench
   'standing-calf-raise': { pattern: 'isolation', equipmentKind: 'dumbbell', muscles: ['calves'] },
   'hanging-knee-raise': { pattern: 'core', equipmentKind: 'bodyweight', muscles: ['abs'] },
   'hollow-body-hold': { pattern: 'core', equipmentKind: 'bodyweight', muscles: ['abs'] },
@@ -221,7 +221,42 @@ const STREET: Exercise[] = [
   sw('shrimp-squat', 'Shrimp squat', 'reps', 'lunge', ['quads', 'glutes'], 'intermediate', ['Hold the back foot behind you, lower until the back knee touches the floor.'], 'leg'),
   sw('nordic-hamstring-curl', 'Nordic hamstring curl', 'reps', 'isolation', ['hamstrings'], 'intermediate', ['Knees on a pad, ankles held; lower the straight body as slowly as possible, push back up with the hands.']),
   sw('skin-the-cat', 'Skin the cat', 'reps', 'mobility', ['shoulders', 'lats'], 'intermediate', ['Hang, tuck the knees and rotate backwards through the arms, then return slowly.']),
-  sw('burpee', 'Burpee', 'reps', 'conditioning', ['quads', 'chest'], 'beginner', ['Squat, kick back to a plank, push-up, jump the feet in, jump up.']),
+  sw('glute-bridge', 'Glute bridge', 'reps', 'hinge', ['glutes', 'hamstrings'], 'beginner', ['On your back, feet flat; drive through the heels and squeeze the glutes at the top for 1 s.', 'Harder: single-leg glute bridge.']),
+  sw('single-leg-glute-bridge', 'Single-leg glute bridge', 'reps', 'hinge', ['glutes', 'hamstrings'], 'intermediate', ['One foot on the floor, the other leg up; hips stay level.'], 'leg'),
+  sw('single-leg-rdl', 'Single-leg Romanian deadlift', 'reps', 'hinge', ['hamstrings', 'glutes'], 'beginner', ['Hinge on one leg, back flat, the free leg reaching back; touch a wall for balance at first.'], 'leg'),
+  sw('single-leg-calf-raise', 'Single-leg calf raise', 'reps', 'isolation', ['calves'], 'beginner', ['On a step, full stretch at the bottom, pause at the top; hold something for balance.'], 'leg'),
+  sw('sissy-squat', 'Sissy squat', 'reps', 'isolation', ['quads'], 'intermediate', ['Hold a post, rise onto the toes and lean back as the knees travel forward; hips stay straight.']),
+  sw('bodyweight-curl', 'Bodyweight bar curl', 'reps', 'isolation', ['biceps'], 'intermediate', ['Under a low bar, underhand grip, body straight; curl the forehead to the bar.']),
+  sw('bodyweight-triceps-extension', 'Bodyweight triceps extension', 'reps', 'isolation', ['triceps'], 'intermediate', ['Hands on a bar at hip height, lean in, bend only the elbows to bring the forehead under the bar, then press back.']),
+  sw('burpee','Burpee', 'reps', 'conditioning', ['quads', 'chest'], 'beginner', ['Squat, kick back to a plank, push-up, jump the feet in, jump up.']),
+];
+
+/** Resistance-band basics for home training without a bar; the catalog has few. */
+function band(id: string, name: string, pattern: Pattern, muscles: Muscle[], cues: string[], perSide?: 'leg' | 'arm'): Exercise {
+  return {
+    ...sw(id, name, 'reps', pattern, muscles, 'beginner', cues, perSide),
+    id: `band-${id}`,
+    loadConvention: 'Band: note which band in the set notes.',
+    tags: ['bands'],
+    equipmentKind: 'bands',
+    category: 'strength',
+  };
+}
+
+const BANDS: Exercise[] = [
+  band('row', 'Band seated row', 'horizontal-pull', ['upper-back', 'lats', 'biceps'], ['Band around the feet or anchored low; pull the hands to the lower ribs, squeeze the shoulder blades.']),
+  band('lat-pulldown', 'Band lat pulldown', 'vertical-pull', ['lats', 'biceps'], ['Band anchored high (door anchor); kneel and pull the elbows down to the sides.']),
+  band('face-pull', 'Band face pull', 'isolation', ['upper-back', 'shoulders'], ['Anchored at face height; pull towards the eyes, hands apart, elbows high.']),
+  band('pull-apart', 'Band pull-apart', 'isolation', ['upper-back', 'shoulders'], ['Arms straight in front, pull the band apart to the chest, slow on the way back.']),
+  band('chest-press', 'Band chest press', 'horizontal-push', ['chest', 'triceps'], ['Band behind the back or anchored behind; press forward to straight arms.']),
+  band('biceps-curl', 'Band biceps curl', 'isolation', ['biceps'], ['Stand on the band, elbows at the sides, curl without swinging.']),
+  band('triceps-pushdown', 'Band triceps pushdown', 'isolation', ['triceps'], ['Anchored high; elbows pinned to the sides, push down to straight arms.']),
+  band('rdl', 'Band Romanian deadlift', 'hinge', ['hamstrings', 'glutes'], ['Stand on the band, hips back with a flat back, stand tall by squeezing the glutes.']),
+  band('split-squat', 'Band split squat', 'lunge', ['quads', 'glutes'], ['Front foot on the band, hands at the shoulders; lower the back knee towards the floor.'], 'leg'),
+  band('single-arm-row', 'Band single-arm row', 'horizontal-pull', ['upper-back', 'lats', 'biceps'], ['Anchored at chest height; row the elbow back past the ribs, no twisting.'], 'arm'),
+  band('straight-arm-pulldown', 'Band straight-arm pulldown', 'vertical-pull', ['lats'], ['Anchored high; arms straight, sweep the hands down to the thighs.']),
+  band('hammer-curl', 'Band hammer curl', 'isolation', ['biceps', 'forearms'], ['Stand on the band, thumbs up, elbows still.']),
+  band('pallof-press','Band Pallof press', 'core', ['abs'], ['Anchored at chest height to your side; press the hands straight out and resist the twist.']),
 ];
 
 type CatalogFile = {
@@ -244,6 +279,7 @@ export const EXERCISES: Exercise[] = [
     };
   }),
   ...STREET,
+  ...BANDS,
   ...CATALOG.exercises,
 ];
 

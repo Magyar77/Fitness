@@ -550,3 +550,13 @@ button.add { flex: 0 0 auto; min-height: 36px; padding: 0 14px; }
 .photos img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius-sm); background: var(--inset); }
 .cues, .steps { margin: 4px 0 8px; padding-left: 20px; display: grid; gap: 4px; font-size: 14px; }
 .exercise-detail details summary { min-height: 32px; display: flex; align-items: center; }
+
+/* Workout builder */
+.built-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.built-head button.link { min-height: 32px; }
+.built-list { list-style: none; padding: 0; margin: 0 0 10px; counter-reset: built; }
+.built-list li { border-top: 1px solid var(--border); counter-increment: built; }
+.built-list li:first-child { border-top: none; }
+.built-row { display: flex; align-items: center; gap: 6px; }
+.built-row::before { content: counter(built); width: 18px; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 13px; }
+a.button-link.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }

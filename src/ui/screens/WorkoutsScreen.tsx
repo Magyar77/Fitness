@@ -113,7 +113,10 @@ export function WorkoutsScreen() {
           </div>
         ))}
         {data.busy && <p className="muted small">Finish the workout in progress before starting another.</p>}
-        <Link to="/workouts/new" className="button-link">+ New workout</Link>
+        <div className="buttons">
+          <Link to="/build" className="button-link primary">Build one for me</Link>
+          <Link to="/workouts/new" className="button-link">+ New workout</Link>
+        </div>
       </div>
 
       <div className="card">
