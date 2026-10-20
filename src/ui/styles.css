@@ -221,3 +221,43 @@ button.danger:not(.link) { background: #5a1f1f; border-color: #a33; color: #ffd0
 .override { display: grid; gap: 8px; margin-top: 8px; }
 .pending-list { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 6px; }
 .pending-list a { color: var(--text); }
+
+/* ---- Week ---- */
+.week-nav { display: flex; align-items: center; gap: 8px; }
+.week-nav h1 { flex: 1; text-align: center; font-size: 20px; margin: 8px 0; }
+.week-nav button { flex: 0 0 44px; padding: 0; font-size: 22px; }
+.days { display: grid; gap: 8px; margin-bottom: 12px; }
+.day { background: var(--surface); border: 1px solid #2a313b; border-radius: 12px; padding: 10px 12px; display: grid; gap: 6px; }
+.day.today { border-color: var(--accent); }
+.day.past { opacity: 0.75; }
+.day.rest, .day.unavailable { background: #161a1f; }
+.day-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.day-name { font-weight: 600; }
+button.avail { min-height: 32px; padding: 0 12px; font-size: 13px; border-radius: 16px; }
+button.avail.train { background: #1f3d2c; border-color: #2f6b47; color: #8fe0ad; }
+button.avail.rest { background: transparent; border-color: #3a4350; color: var(--muted); }
+button.avail.unavailable { background: #3a1717; border-color: #6b2f2f; color: #ffaaaa; }
+button.entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  min-height: 44px;
+  background: #151a20;
+  border-color: #2f3742;
+  color: var(--text);
+  font-weight: 500;
+}
+button.entry.done { background: #13261b; border-color: #2f6b47; opacity: 1; }
+button.entry.selected, button.chip.selected { border-color: #ffb84d; box-shadow: 0 0 0 1px #ffb84d; }
+.entry-state { font-size: 12px; color: var(--muted); white-space: nowrap; }
+button.put { justify-self: start; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+button.chip { min-height: 36px; font-size: 14px; }
+.select-bar p { margin-bottom: 8px; }
+.reasons { margin: 0; padding-left: 18px; display: grid; gap: 6px; line-height: 1.4; }
+.reasons .conflict { color: #ffaaaa; }
+.reasons .warning { color: #ffd27a; }
+.reasons .info { color: var(--muted); }
+.sticky-actions { margin-bottom: 12px; }

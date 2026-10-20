@@ -93,7 +93,7 @@ export function validateWeek(input: ValidateInput): ScheduleWarning[] {
         message: `${label(heavy)} the day before ${label(t)}: back and grip fatigue will cost pull-up performance.`,
       });
     } else if (before.length) {
-      warnings.push({ severity: 'info', code: 'main_not_fresh', date: e.date, message: `${label(t)} follows a training day; it works best right after a rest day.` });
+      warnings.push({ severity: 'info', code: 'main_not_fresh', date: e.date, message: `${label(t)} follows a training day; it works best right after a day off.` });
     }
   }
 

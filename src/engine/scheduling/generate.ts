@@ -138,7 +138,7 @@ export function generateWeek(input: ScheduleInput): ScheduleProposal {
       notes.push(
         trainedBefore
           ? `${label(t)} on ${weekdayName(e.date)}. No rest day was available right before it.`
-          : `${label(t)} on ${weekdayName(e.date)}, right after a rest day: freshest for the top goal.`,
+          : `${label(t)} on ${weekdayName(e.date)}, right after a day off: freshest for the top goal.`,
       );
     }
   }

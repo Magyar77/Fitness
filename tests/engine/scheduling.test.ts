@@ -35,7 +35,7 @@ describe('generateWeek', () => {
     const p = week({ restDays: [Sa, Su] });
     expect(plan(p.entries)).toBe('Mon:C Tue:A Wed:B Thu:E Fri:D');
     expect(p.omitted).toEqual([]);
-    expect(p.notes).toContain('C (Pull + pull-ups, main day) on Monday, right after a rest day: freshest for the top goal.');
+    expect(p.notes).toContain('C (Pull + pull-ups, main day) on Monday, right after a day off: freshest for the top goal.');
   });
 
   it('Sunday + Monday off → Tue–Sat with C first after the rest days', () => {
