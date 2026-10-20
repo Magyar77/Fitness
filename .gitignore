@@ -1,0 +1,11 @@
+node_modules
+dist
+dev-dist
+*.local
+*.tsbuildinfo
+
+# Personal data: never commit (public repo for GitHub Pages)
+private/
+docs/*.docx
+docs/*.pdf
+.claude/settings.local.json
