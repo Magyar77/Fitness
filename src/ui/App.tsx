@@ -8,6 +8,7 @@ import { WeekScreen } from './screens/WeekScreen';
 import { WorkoutsScreen } from './screens/WorkoutsScreen';
 import { ProgressScreen } from './screens/ProgressScreen';
 import { WelcomeScreen } from './screens/WelcomeScreen';
+import { LibraryScreen } from './screens/LibraryScreen';
 import { WorkoutEditor } from './workouts/WorkoutEditor';
 
 const TABS = [
@@ -41,6 +42,7 @@ function Shell() {
             <Route path="/log" element={<WorkoutsScreen />} />
             <Route path="/workouts/:code" element={<WorkoutEditor />} />
             <Route path="/program/:code" element={<WorkoutEditor mode="program" />} />
+            <Route path="/library" element={<LibraryScreen />} />
             <Route path="/progress" element={<ProgressScreen />} />
             <Route path="/more" element={<MoreScreen />} />
             <Route path="*" element={<Navigate to="/today" replace />} />

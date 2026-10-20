@@ -429,8 +429,6 @@ button.icon.expand { flex: 0 0 44px; font-size: 16px; }
 .slot-edit .set-row { margin-bottom: 8px; }
 .slot-edit .note { margin-bottom: 4px; }
 .reorder { display: flex; gap: 4px; }
-.picker ul { list-style: none; padding: 0; margin: 8px 0; max-height: 320px; overflow-y: auto; }
-.picker li button { width: 100%; text-align: left; min-height: 40px; }
 .program-list { margin: 8px 0; padding-left: 20px; display: grid; gap: 4px; }
 .program-workout { border-top: 1px solid var(--border); padding: 8px 0; margin: 0; }
 .program-workout summary { min-height: 36px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; color: var(--text); font-weight: 500; }
@@ -508,3 +506,47 @@ button.icon.expand { flex: 0 0 44px; font-size: 16px; }
 
 .welcome .lead { font-size: 17px; line-height: 1.5; margin: 0 0 18px; color: var(--muted); }
 .welcome h1 { margin-top: 20px; font-size: 30px; }
+
+/* ==========================================================================
+   Exercise library
+   ========================================================================== */
+.browser input[type='search'] {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--input);
+  margin-bottom: 8px;
+}
+.chip-row { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 6px; scrollbar-width: none; }
+.chip-row::-webkit-scrollbar { display: none; }
+.chip-row button.chip { flex: 0 0 auto; min-height: 34px; padding: 0 12px; font-size: 13px; border-radius: 999px; }
+.results-line { display: flex; align-items: center; justify-content: space-between; margin: 6px 0; }
+.results-line button.link { min-height: 32px; font-size: 13px; }
+.library-list { list-style: none; padding: 0; margin: 0 0 10px; }
+.library-list li { border-top: 1px solid var(--border); }
+.library-list li:first-child { border-top: none; }
+.library-row { display: flex; align-items: center; gap: 8px; }
+button.library-name {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  height: auto;
+  min-height: 52px;
+  padding: 8px 0;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-weight: 500;
+}
+button.library-name small { color: var(--muted); font-weight: 400; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+button.add { flex: 0 0 auto; min-height: 36px; padding: 0 14px; }
+.exercise-detail { padding: 0 0 12px; }
+.exercise-detail p { margin: 0 0 8px; }
+.photos { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+.photos img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius-sm); background: var(--inset); }
+.cues, .steps { margin: 4px 0 8px; padding-left: 20px; display: grid; gap: 4px; font-size: 14px; }
+.exercise-detail details summary { min-height: 32px; display: flex; align-items: center; }

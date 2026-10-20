@@ -1,7 +1,8 @@
 // Custom exercises and workouts: from form drafts to the same shapes the program uses,
 // so the logger, progression and scheduler treat them like any other workout.
 
-import type { Demand, Exercise, LoadType, Measure, ProgressionRule, Range, Region, SlotTarget, TemplateSlot, WorkoutTemplate } from './model';
+import type { Demand, EquipmentKind, Exercise, LoadType, Measure, Muscle, Pattern, ProgressionRule, Range, Region, SlotTarget, TemplateSlot, WorkoutTemplate } from './model';
+import { BODY_PARTS, type BodyPart } from './library/groups';
 
 // ---------------------------------------------------------------------------
 // Custom exercises
@@ -57,7 +58,8 @@ const PROFILE: Partial<Record<LoadType, string>> = {
 export interface CustomExerciseInput {
   name: string;
   kind: ExerciseKind;
-  region: Region | null;
+  /** Body parts it mainly works; the first is the main one. */
+  parts: BodyPart[];
   pull: boolean;
   perSide: 'leg' | 'arm' | 'side' | null;
   cues: string;
@@ -79,13 +81,50 @@ export function validateExercise(input: CustomExerciseInput, existing: Exercise[
   const name = input.name.trim();
   if (!name) problems.push('Give the exercise a name.');
   if (existing.some((e) => e.id !== editingId && e.name.trim().toLowerCase() === name.toLowerCase())) problems.push(`An exercise called "${name}" already exists.`);
-  if (input.kind !== 'cardio' && !input.region) problems.push('Choose the main body region.');
+  if (input.kind !== 'cardio' && input.parts.length === 0) problems.push('Choose the body parts it works.');
   return problems;
+}
+
+const EQUIPMENT: Record<ExerciseKind, EquipmentKind> = {
+  barbell: 'barbell', barbell_total: 'barbell', dumbbell: 'dumbbell', machine: 'machine', cable: 'cable',
+  bodyweight: 'bodyweight', assisted: 'machine', timed: 'bodyweight', distance: 'dumbbell', cardio: 'other',
+};
+
+/** Main region from the body parts: core only, mostly legs and glutes, or upper. */
+export function regionOf(parts: BodyPart[]): Region | null {
+  if (parts.length === 0) return null;
+  if (parts.every((p) => p === 'core')) return 'core';
+  const lower = parts.filter((p) => p === 'legs' || p === 'glutes').length;
+  const upper = parts.filter((p) => p !== 'legs' && p !== 'glutes' && p !== 'core').length;
+  return lower > upper || (lower > 0 && lower === upper && (parts[0] === 'legs' || parts[0] === 'glutes')) ? 'lower' : 'upper';
+}
+
+/** Movement pattern guessed from the name and body parts, so the workout builder can place it. */
+export function guessPattern(name: string, kind: ExerciseKind, parts: BodyPart[], pull: boolean): Pattern {
+  const n = name.toLowerCase();
+  const main = parts[0];
+  if (kind === 'cardio') return 'conditioning';
+  if (kind === 'distance' || /carry|farmer/.test(n)) return 'carry';
+  if (main === 'core') return 'core';
+  if (/lunge|split squat|step-?up|pistol|bulgarian/.test(n)) return 'lunge';
+  if (/squat|leg press/.test(n)) return 'squat';
+  if (/deadlift|rdl|good morning|hip thrust|bridge|swing/.test(n)) return 'hinge';
+  if (pull || /row|pull|chin|pulldown/.test(n)) return /pull-?up|chin|pulldown/.test(n) ? 'vertical-pull' : 'horizontal-pull';
+  if (/overhead|shoulder press|military|handstand|pike/.test(n)) return 'vertical-push';
+  if (/press|push-?up|dip/.test(n)) return main === 'shoulders' ? 'vertical-push' : 'horizontal-push';
+  return 'isolation';
+}
+
+/** The main muscles of each chosen body part. */
+function musclesOf(parts: BodyPart[]): Muscle[] {
+  const main: Record<BodyPart, Muscle[]> = { chest: ['chest'], back: ['lats', 'upper-back'], shoulders: ['shoulders'], arms: ['biceps', 'triceps'], legs: ['quads', 'hamstrings'], glutes: ['glutes'], core: ['abs'] };
+  return [...new Set(parts.flatMap((p) => (BODY_PARTS.some((b) => b.id === p) ? main[p] : [])))];
 }
 
 export function buildExercise(input: CustomExerciseInput, id: string): Exercise {
   const { loadType, measure } = KIND[input.kind];
   const profile = PROFILE[loadType];
+  const parts = input.kind === 'cardio' ? [] : input.parts;
   return {
     id,
     name: input.name.trim(),
@@ -97,9 +136,13 @@ export function buildExercise(input: CustomExerciseInput, id: string): Exercise 
     ...(profile ? { equipmentProfileId: profile } : {}),
     tags: [],
     custom: true,
-    region: input.kind === 'cardio' ? null : input.region,
+    region: regionOf(parts),
     pull: input.pull,
     ...(input.perSide ? { perSide: input.perSide } : {}),
+    muscles: musclesOf(parts),
+    pattern: guessPattern(input.name, input.kind, parts, input.pull),
+    equipmentKind: EQUIPMENT[input.kind],
+    category: input.kind === 'cardio' ? 'cardio' : 'strength',
   };
 }
 

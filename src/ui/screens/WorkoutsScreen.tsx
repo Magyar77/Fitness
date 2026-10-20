@@ -6,7 +6,6 @@ import { inProgressSession, startSession } from '../../data/workouts';
 import type { Exercise, WorkoutTemplate } from '../../engine/model';
 import type { ScheduleWarning } from '../../engine/scheduling';
 import { niceDate, today } from '../dates';
-import { ExerciseForm } from '../workouts/ExerciseForm';
 import { ProgramCard } from '../workouts/ProgramCard';
 
 interface Loaded {
@@ -25,7 +24,6 @@ export function WorkoutsScreen() {
   const [message, setMessage] = useState<Message>(null);
   const [scheduling, setScheduling] = useState<string | null>(null);
   const [date, setDate] = useState(today());
-  const [newExercise, setNewExercise] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -120,23 +118,11 @@ export function WorkoutsScreen() {
 
       <div className="card">
         <h2>Exercise library</h2>
-        {newExercise ? (
-          <ExerciseForm onSaved={(e) => { setNewExercise(false); setMessage({ kind: 'ok', text: `Added "${e.name}" to the library.` }); refresh(); }} onCancel={() => setNewExercise(false)} />
-        ) : (
-          <button type="button" className="secondary" onClick={() => setNewExercise(true)}>+ New exercise</button>
-        )}
-        <details>
-          <summary>{data.exercises.length} exercises</summary>
-          <ul className="program-list">
-            {data.exercises.map((e) => (
-              <li key={e.id}>
-                {e.name}
-                {e.custom && <span className="badge">custom</span>}
-                <span className="muted small"> · {e.loadConvention}</span>
-              </li>
-            ))}
-          </ul>
-        </details>
+        <p className="muted small">
+          {data.exercises.length} exercises: gym, street workout and bodyweight, grouped by body part, with photos and how-tos.
+          {data.exercises.some((e) => e.custom) && ` Includes ${data.exercises.filter((e) => e.custom).length} of your own.`}
+        </p>
+        <Link to="/library" className="button-link">Browse exercises</Link>
       </div>
     </section>
   );

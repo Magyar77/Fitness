@@ -132,7 +132,7 @@ describe('custom workouts', () => {
 
   it('creates custom exercises and refuses to edit built-in ones', async () => {
     const db = await freshDb();
-    const input = { name: 'Hammer curl', kind: 'dumbbell' as const, region: 'upper' as const, pull: false, perSide: null, cues: '' };
+    const input = { name: 'Hammer curl', kind: 'dumbbell' as const, parts: ['arms' as const], pull: false, perSide: null, cues: '' };
     const r = await saveExercise(db, input);
     expect(r).toMatchObject({ ok: true, exercise: { name: 'Hammer curl', custom: true } });
     expect(await saveExercise(db, input)).toEqual({ ok: false, problems: ['An exercise called "Hammer curl" already exists.'] });

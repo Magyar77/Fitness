@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { getDb } from '../../data/db';
 import { saveExercise } from '../../data/custom';
 import { EXERCISE_KINDS, type CustomExerciseInput, type ExerciseKind } from '../../engine/custom';
-import type { Exercise, Region } from '../../engine/model';
+import type { Exercise } from '../../engine/model';
+import { BODY_PARTS, type BodyPart } from '../../engine/library/groups';
 
 interface Props {
   onSaved: (e: Exercise) => void;
@@ -11,9 +12,10 @@ interface Props {
 }
 
 export function ExerciseForm({ onSaved, onCancel, initialName = '' }: Props) {
-  const [input, setInput] = useState<CustomExerciseInput>({ name: initialName, kind: 'dumbbell', region: null, pull: false, perSide: null, cues: '' });
+  const [input, setInput] = useState<CustomExerciseInput>({ name: initialName, kind: 'dumbbell', parts: [], pull: false, perSide: null, cues: '' });
   const [problems, setProblems] = useState<string[]>([]);
   const set = (p: Partial<CustomExerciseInput>) => setInput({ ...input, ...p });
+  const toggle = (part: BodyPart) => set({ parts: input.parts.includes(part) ? input.parts.filter((x) => x !== part) : [...input.parts, part] });
 
   async function save() {
     const r = await saveExercise(getDb(), input);
@@ -36,11 +38,11 @@ export function ExerciseForm({ onSaved, onCancel, initialName = '' }: Props) {
       </label>
       {input.kind !== 'cardio' && (
         <fieldset className="field">
-          <legend>Main body region</legend>
-          <div className="segmented">
-            {(['upper', 'lower', 'core'] as Region[]).map((r) => (
-              <button key={r} type="button" className={input.region === r ? '' : 'secondary'} aria-pressed={input.region === r} onClick={() => set({ region: r })}>
-                {r[0]!.toUpperCase() + r.slice(1)}
+          <legend>Body parts it works (main one first)</legend>
+          <div className="chips">
+            {BODY_PARTS.map((b) => (
+              <button key={b.id} type="button" className="secondary chip" aria-pressed={input.parts.includes(b.id)} onClick={() => toggle(b.id)}>
+                {b.label}
               </button>
             ))}
           </div>

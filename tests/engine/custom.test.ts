@@ -22,20 +22,40 @@ function draft(over: Partial<WorkoutDraft> = {}): WorkoutDraft {
 }
 
 describe('library metadata', () => {
-  it('gives every non-cardio exercise a region and marks loaded pulling', () => {
-    expect(EXERCISES.filter((e) => e.measure !== 'duration' && !e.region).map((e) => e.id)).toEqual([]);
-    expect(EXERCISES.filter((e) => e.pull).map((e) => e.id).sort()).toEqual(['assisted-negative-pull-up', 'assisted-pull-up', 'barbell-row', 'lat-pulldown', 'pull-up', 'seated-cable-row', 'single-arm-db-row']);
+  const app = EXERCISES.filter((e) => !e.id.startsWith('fx-') && !e.id.startsWith('sw-'));
+
+  it('keeps the original exercises, each with a region and the loaded-pulling flag', () => {
+    expect(app).toHaveLength(41);
+    expect(app.filter((e) => e.measure !== 'duration' && !e.region).map((e) => e.id)).toEqual([]);
+    expect(app.filter((e) => e.pull).map((e) => e.id).sort()).toEqual(['assisted-negative-pull-up', 'assisted-pull-up', 'barbell-row', 'lat-pulldown', 'pull-up', 'seated-cable-row', 'single-arm-db-row']);
+  });
+
+  it('adds the full catalog and street skills with unique ids and no duplicate names', () => {
+    expect(EXERCISES.length).toBeGreaterThan(900);
+    expect(new Set(EXERCISES.map((e) => e.id)).size).toBe(EXERCISES.length);
+    const names = EXERCISES.map((e) => e.name.toLowerCase());
+    expect(names.filter((n, i) => names.indexOf(n) !== i)).toEqual([]);
+    expect(EXERCISES.filter((e) => !e.pattern || !e.equipmentKind).map((e) => e.id)).toEqual([]);
+    expect(EXERCISES.filter((e) => e.id.startsWith('sw-')).length).toBeGreaterThanOrEqual(20);
+  });
+
+  it('gives app exercises photos and instructions where the catalog has the same exercise', () => {
+    const bench = EXERCISES_BY_ID.get('barbell-bench-press')!;
+    expect(bench.images?.length).toBe(2);
+    expect(bench.instructions?.length).toBeGreaterThan(0);
+    expect(bench.muscles).toContain('chest');
+    expect(bench).toMatchObject({ name: 'Barbell bench press', loadType: 'plates', pattern: 'horizontal-push' });
   });
 });
 
 describe('custom exercises', () => {
-  const input = { name: '  Hammer curl ', kind: 'dumbbell' as const, region: 'upper' as const, pull: false, perSide: null, cues: 'Neutral grip\n\nNo swing' };
+  const input = { name: '  Hammer curl ', kind: 'dumbbell' as const, parts: ['arms' as const], pull: false, perSide: null, cues: 'Neutral grip\n\nNo swing' };
 
   it('validates names and regions', () => {
     expect(validateExercise({ ...input, name: '' }, EXERCISES)).toContain('Give the exercise a name.');
     expect(validateExercise({ ...input, name: 'lat pulldown' }, EXERCISES)).toContain('An exercise called "lat pulldown" already exists.');
-    expect(validateExercise({ ...input, region: null }, EXERCISES)).toContain('Choose the main body region.');
-    expect(validateExercise({ ...input, kind: 'cardio', region: null }, EXERCISES)).toEqual([]);
+    expect(validateExercise({ ...input, parts: [] }, EXERCISES)).toContain('Choose the body parts it works.');
+    expect(validateExercise({ ...input, kind: 'cardio', parts: [] }, EXERCISES)).toEqual([]);
   });
 
   it('maps the chosen kind onto load type, measure and equipment', () => {
@@ -44,6 +64,13 @@ describe('custom exercises', () => {
     expect(kindOf(e)).toBe('dumbbell');
     expect(kindOf(buildExercise({ ...input, kind: 'assisted' }, 'c2'))).toBe('assisted');
     expect(buildExercise({ ...input, kind: 'cardio' }, 'c3')).toMatchObject({ measure: 'duration', region: null });
+  });
+
+  it('derives region, muscles and movement from the body parts and name', () => {
+    expect(buildExercise(input, 'c1')).toMatchObject({ muscles: ['biceps', 'triceps'], pattern: 'isolation', equipmentKind: 'dumbbell' });
+    expect(buildExercise({ ...input, name: 'Hack squat', kind: 'machine', parts: ['legs', 'glutes'] }, 'c4')).toMatchObject({ region: 'lower', pattern: 'squat' });
+    expect(buildExercise({ ...input, name: 'Chest-supported row', parts: ['back'], pull: true }, 'c5')).toMatchObject({ region: 'upper', pattern: 'horizontal-pull' });
+    expect(buildExercise({ ...input, name: 'Ab wheel', kind: 'bodyweight', parts: ['core'] }, 'c6')).toMatchObject({ region: 'core', pattern: 'core', muscles: ['abs'] });
   });
 });
 

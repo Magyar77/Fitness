@@ -1,4 +1,5 @@
-import type { Exercise, LoadType, Measure, Region } from '../model';
+import type { EquipmentKind, Exercise, LoadType, Measure, Muscle, Pattern, Region } from '../model';
+import catalog from './catalog.json';
 
 const CONVENTION: Record<LoadType, string> = {
   plates: 'Plates only, bar/sled not counted (e.g. "20 kg" = 10 kg per side).',
@@ -73,7 +74,8 @@ function ex(
 }
 
 // Cues: Week 2 program sheet (19–23 Oct 2026).
-export const EXERCISES: Exercise[] = [
+/** The app's own exercises (ids used by Program v2 and history; never renamed). */
+const APP_EXERCISES: Exercise[] = [
   // Pull-up path
   ex('dead-hang', 'Dead hang', 'bodyweight', 'time', ['Stop ~5 s before grip gives out.'], { tags: ['pull-up-path', 'grip'] }),
   ex('scapular-pull-up', 'Scapular pull-ups', 'bodyweight', 'reps', ['Straight arms; pull shoulder blades down and back, hold 1 s at the top, lower slowly.'], { tags: ['pull-up-path'] }),
@@ -124,6 +126,125 @@ export const EXERCISES: Exercise[] = [
   ex('deadlift', 'Deadlift', 'plates', 'reps', ['Bar over mid-foot, flat back, push the floor away, lock out with the glutes.']),
   ex('hip-thrust', 'Hip thrust', 'plates', 'reps', ['Upper back on a bench, chin tucked, squeeze the glutes at the top.']),
   ex('plank', 'Plank', 'bodyweight', 'time', ['Elbows under shoulders, straight line from head to heels.']),
+];
+
+/** Library metadata for the app's own exercises (muscles come from the catalog where it has them). */
+const APP_META: Record<string, { pattern: Pattern; equipmentKind: EquipmentKind; muscles?: Muscle[] }> = {
+  'dead-hang': { pattern: 'carry', equipmentKind: 'bodyweight', muscles: ['forearms', 'lats'] },
+  'scapular-pull-up': { pattern: 'vertical-pull', equipmentKind: 'bodyweight' },
+  'assisted-negative-pull-up': { pattern: 'vertical-pull', equipmentKind: 'machine', muscles: ['lats', 'biceps'] },
+  'assisted-pull-up': { pattern: 'vertical-pull', equipmentKind: 'machine', muscles: ['lats', 'biceps'] },
+  'pull-up': { pattern: 'vertical-pull', equipmentKind: 'bodyweight' },
+  'barbell-bench-press': { pattern: 'horizontal-push', equipmentKind: 'barbell' },
+  'seated-db-shoulder-press': { pattern: 'vertical-push', equipmentKind: 'dumbbell' },
+  'incline-db-press': { pattern: 'horizontal-push', equipmentKind: 'dumbbell' },
+  'db-lateral-raise': { pattern: 'isolation', equipmentKind: 'dumbbell' },
+  'cable-triceps-pushdown': { pattern: 'isolation', equipmentKind: 'cable' },
+  'db-bench-press': { pattern: 'horizontal-push', equipmentKind: 'dumbbell' },
+  'assisted-dip': { pattern: 'vertical-push', equipmentKind: 'machine', muscles: ['triceps', 'chest'] },
+  'overhead-cable-triceps': { pattern: 'isolation', equipmentKind: 'cable' },
+  'lat-pulldown': { pattern: 'vertical-pull', equipmentKind: 'cable' },
+  'single-arm-db-row': { pattern: 'horizontal-pull', equipmentKind: 'dumbbell' },
+  'cable-face-pull': { pattern: 'horizontal-pull', equipmentKind: 'cable' },
+  'barbell-curl': { pattern: 'isolation', equipmentKind: 'barbell' },
+  'incline-db-curl': { pattern: 'isolation', equipmentKind: 'dumbbell' },
+  'seated-cable-row': { pattern: 'horizontal-pull', equipmentKind: 'cable' },
+  'farmers-carry': { pattern: 'carry', equipmentKind: 'dumbbell' },
+  'barbell-back-squat': { pattern: 'squat', equipmentKind: 'barbell' },
+  'romanian-deadlift': { pattern: 'hinge', equipmentKind: 'barbell' },
+  'db-bulgarian-split-squat': { pattern: 'lunge', equipmentKind: 'dumbbell' },
+  'leg-curl': { pattern: 'isolation', equipmentKind: 'machine' },
+  'leg-press': { pattern: 'squat', equipmentKind: 'machine' },
+  'db-walking-lunge': { pattern: 'lunge', equipmentKind: 'dumbbell' },
+  'back-extension-45': { pattern: 'hinge', equipmentKind: 'bodyweight' },
+  'standing-calf-raise': { pattern: 'isolation', equipmentKind: 'dumbbell', muscles: ['calves'] },
+  'hanging-knee-raise': { pattern: 'core', equipmentKind: 'bodyweight', muscles: ['abs'] },
+  'hollow-body-hold': { pattern: 'core', equipmentKind: 'bodyweight', muscles: ['abs'] },
+  'dead-bug': { pattern: 'core', equipmentKind: 'bodyweight' },
+  'side-plank': { pattern: 'core', equipmentKind: 'bodyweight' },
+  'bike-or-incline-walk': { pattern: 'conditioning', equipmentKind: 'machine' },
+  cycling: { pattern: 'conditioning', equipmentKind: 'other' },
+  'push-up': { pattern: 'horizontal-push', equipmentKind: 'bodyweight' },
+  'goblet-squat': { pattern: 'squat', equipmentKind: 'dumbbell' },
+  'barbell-overhead-press': { pattern: 'vertical-push', equipmentKind: 'barbell' },
+  'barbell-row': { pattern: 'horizontal-pull', equipmentKind: 'barbell' },
+  deadlift: { pattern: 'hinge', equipmentKind: 'barbell' },
+  'hip-thrust': { pattern: 'hinge', equipmentKind: 'barbell' },
+  plank: { pattern: 'core', equipmentKind: 'bodyweight' },
+};
+
+/** Street workout / calisthenics skills the catalog lacks, with progressions in the cues. */
+function sw(id: string, name: string, measure: Measure, pattern: Pattern, muscles: Muscle[], level: Exercise['level'], cues: string[], perSide?: 'leg' | 'arm'): Exercise {
+  const lower = muscles.some((m) => ['quads', 'hamstrings', 'glutes', 'calves'].includes(m));
+  return {
+    id: `sw-${id}`,
+    name,
+    loadType: 'bodyweight',
+    measure,
+    loadConvention: 'Bodyweight.',
+    cues,
+    alternatives: [],
+    tags: ['calisthenics'],
+    custom: false,
+    region: lower ? 'lower' : pattern === 'core' && muscles[0] === 'abs' ? 'core' : 'upper',
+    pull: pattern === 'vertical-pull' || pattern === 'horizontal-pull',
+    ...(perSide ? { perSide } : {}),
+    muscles,
+    pattern,
+    equipmentKind: 'bodyweight',
+    level,
+    category: 'calisthenics',
+  };
+}
+
+const STREET: Exercise[] = [
+  sw('l-sit', 'L-sit', 'time', 'core', ['abs', 'triceps'], 'intermediate', ['Hands on parallettes or the floor, legs straight and level, shoulders pushed down.', 'Progression: tuck L-sit, then one leg out, then full L-sit.']),
+  sw('tuck-front-lever', 'Tuck front lever', 'time', 'core', ['lats', 'abs'], 'intermediate', ['Hang, pull the bar towards the hips with straight arms, knees tucked, back flat.', 'Progression: tuck, advanced tuck, one leg, full front lever.']),
+  sw('front-lever', 'Front lever', 'time', 'core', ['lats', 'abs'], 'expert', ['Body horizontal and straight under the bar, arms straight, hips level.']),
+  sw('tuck-back-lever', 'Tuck back lever', 'time', 'core', ['lats', 'chest', 'biceps'], 'intermediate', ['From a skin-the-cat position, hold the body horizontal facing down, knees tucked.', 'Progression: tuck, advanced tuck, straddle, full.']),
+  sw('planche-lean', 'Planche lean', 'time', 'horizontal-push', ['shoulders', 'chest'], 'intermediate', ['Push-up position, fingers turned out, lean the shoulders well past the hands, arms locked.']),
+  sw('tuck-planche', 'Tuck planche', 'time', 'horizontal-push', ['shoulders', 'chest'], 'expert', ['Hands only on the floor, knees tucked to the chest, arms straight, back rounded.']),
+  sw('pseudo-planche-push-up', 'Pseudo planche push-up', 'reps', 'horizontal-push', ['shoulders', 'chest', 'triceps'], 'intermediate', ['Hands by the hips, lean forward and keep the lean through every rep.']),
+  sw('archer-push-up', 'Archer push-up', 'reps', 'horizontal-push', ['chest', 'triceps'], 'intermediate', ['Wide hands; lower towards one hand while the other arm stays straight. Alternate.']),
+  sw('diamond-push-up', 'Diamond push-up', 'reps', 'horizontal-push', ['triceps', 'chest'], 'beginner', ['Hands together under the chest, elbows close to the body.']),
+  sw('clap-push-up', 'Clap push-up', 'reps', 'horizontal-push', ['chest', 'triceps'], 'intermediate', ['Push explosively, clap, land with soft elbows.']),
+  sw('pike-push-up', 'Pike push-up', 'reps', 'vertical-push', ['shoulders', 'triceps'], 'beginner', ['Hips high, head moves between the hands. Feet on a box to make it harder.']),
+  sw('wall-handstand-hold', 'Wall handstand hold', 'time', 'vertical-push', ['shoulders', 'triceps'], 'intermediate', ['Chest to the wall, arms locked, body in one line, push the floor away.']),
+  sw('negative-pull-up', 'Negative pull-up', 'reps', 'vertical-pull', ['lats', 'biceps'], 'beginner', ['Jump or step to chin over the bar, lower in 3–5 s to a full hang.']),
+  sw('archer-pull-up', 'Archer pull-up', 'reps', 'vertical-pull', ['lats', 'biceps'], 'expert', ['Wide grip; pull towards one hand while the other arm straightens along the bar.']),
+  sw('typewriter-pull-up', 'Typewriter pull-up', 'reps', 'vertical-pull', ['lats', 'biceps'], 'expert', ['Pull up, then move side to side at the top with the chin over the bar.']),
+  sw('straight-bar-dip', 'Straight bar dip', 'reps', 'vertical-push', ['triceps', 'chest'], 'intermediate', ['On top of a single bar, lean forward slightly, lower until the bar is at the upper belly.']),
+  sw('toes-to-bar', 'Toes to bar', 'reps', 'core', ['abs'], 'intermediate', ['Hang, keep the legs straight and lift the toes to the bar without swinging.']),
+  sw('dragon-flag', 'Dragon flag', 'reps', 'core', ['abs'], 'expert', ['Hold a bench behind the head; lower the straight body slowly, only the shoulders touching.', 'Progression: tuck, one leg, full; negatives first.']),
+  sw('human-flag', 'Human flag', 'time', 'core', ['abs', 'shoulders', 'lats'], 'expert', ['Grip a vertical pole, bottom arm pushes, top arm pulls, body horizontal.']),
+  sw('pistol-squat', 'Pistol squat', 'reps', 'lunge', ['quads', 'glutes'], 'intermediate', ['Squat on one leg, the other straight in front. Hold a door frame or sit to a box at first.'], 'leg'),
+  sw('shrimp-squat', 'Shrimp squat', 'reps', 'lunge', ['quads', 'glutes'], 'intermediate', ['Hold the back foot behind you, lower until the back knee touches the floor.'], 'leg'),
+  sw('nordic-hamstring-curl', 'Nordic hamstring curl', 'reps', 'isolation', ['hamstrings'], 'intermediate', ['Knees on a pad, ankles held; lower the straight body as slowly as possible, push back up with the hands.']),
+  sw('skin-the-cat', 'Skin the cat', 'reps', 'mobility', ['shoulders', 'lats'], 'intermediate', ['Hang, tuck the knees and rotate backwards through the arms, then return slowly.']),
+  sw('burpee', 'Burpee', 'reps', 'conditioning', ['quads', 'chest'], 'beginner', ['Squat, kick back to a plank, push-up, jump the feet in, jump up.']),
+];
+
+type CatalogFile = {
+  exercises: Exercise[];
+  enrich: Record<string, Pick<Exercise, 'muscles' | 'secondaryMuscles' | 'level' | 'instructions' | 'images'>>;
+};
+const CATALOG = catalog as unknown as CatalogFile;
+
+/** All built-in exercises: the app's own (with photos and instructions), street skills, then the catalog. */
+export const EXERCISES: Exercise[] = [
+  ...APP_EXERCISES.map((e): Exercise => {
+    const meta = APP_META[e.id];
+    const extra = CATALOG.enrich[e.id];
+    return {
+      ...e,
+      ...(extra ?? {}),
+      ...(meta ? { pattern: meta.pattern, equipmentKind: meta.equipmentKind } : {}),
+      ...(meta?.muscles && !extra ? { muscles: meta.muscles } : {}),
+      category: e.measure === 'duration' ? 'cardio' : 'strength',
+    };
+  }),
+  ...STREET,
+  ...CATALOG.exercises,
 ];
 
 export const EXERCISES_BY_ID: ReadonlyMap<string, Exercise> = new Map(EXERCISES.map((e) => [e.id, e]));

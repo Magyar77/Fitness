@@ -6,8 +6,8 @@ import { VitePWA } from 'vite-plugin-pwa';
 // Relative base so the build works from any static host sub-path (e.g. GitHub Pages).
 export default defineConfig({
   base: './',
-  // One ~150 kB (gzipped) bundle, cached once by the service worker for offline use.
-  build: { chunkSizeWarningLimit: 800 },
+  // One bundle (app + exercise library), cached once by the service worker for offline use.
+  build: { chunkSizeWarningLimit: 1600 },
   plugins: [
     react(),
     VitePWA({
@@ -31,6 +31,19 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png}'],
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        // Exercise photos are fetched when first viewed, then kept for offline use.
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/raw\.githubusercontent\.com\/yuhonas\/free-exercise-db\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'exercise-photos',
+              expiration: { maxEntries: 600, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
       },
     }),
   ],

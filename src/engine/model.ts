@@ -39,7 +39,31 @@ export interface Exercise {
   pull: boolean;
   /** Default per-side label for unilateral exercises. */
   perSide?: 'leg' | 'arm' | 'side';
+  /** Library metadata (filters, workout builder, exercise swaps). */
+  muscles?: Muscle[];
+  secondaryMuscles?: Muscle[];
+  pattern?: Pattern;
+  equipmentKind?: EquipmentKind;
+  level?: 'beginner' | 'intermediate' | 'expert';
+  category?: ExerciseCategory;
+  instructions?: string[];
+  /** Photo paths in the free-exercise-db image set (see library/images.ts). */
+  images?: string[];
 }
+
+export type Muscle =
+  | 'chest' | 'shoulders' | 'triceps' | 'biceps' | 'forearms'
+  | 'lats' | 'upper-back' | 'traps' | 'lower-back' | 'abs'
+  | 'glutes' | 'quads' | 'hamstrings' | 'adductors' | 'abductors' | 'calves' | 'neck';
+
+export type Pattern =
+  | 'squat' | 'lunge' | 'hinge'
+  | 'horizontal-push' | 'vertical-push' | 'horizontal-pull' | 'vertical-pull'
+  | 'carry' | 'core' | 'isolation' | 'conditioning' | 'mobility';
+
+export type EquipmentKind = 'barbell' | 'dumbbell' | 'kettlebell' | 'cable' | 'machine' | 'bands' | 'bodyweight' | 'other';
+
+export type ExerciseCategory = 'strength' | 'calisthenics' | 'powerlifting' | 'olympic' | 'strongman' | 'plyometrics' | 'cardio' | 'mobility';
 
 export interface EquipmentProfile {
   id: string;

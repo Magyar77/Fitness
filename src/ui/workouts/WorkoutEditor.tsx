@@ -9,6 +9,7 @@ import type { Demand, Exercise, WorkoutTemplate } from '../../engine/model';
 import { NumberField } from '../logger/NumberField';
 import { today } from '../dates';
 import { ExerciseForm } from './ExerciseForm';
+import { ExerciseBrowser } from '../library/ExerciseBrowser';
 import { useBar, useUnit } from '../profile';
 import { isPlatesBarbell, shownLoad, storedLoad } from '../../engine/units';
 
@@ -84,8 +85,6 @@ export function WorkoutEditor({ mode = 'custom' }: { mode?: 'custom' | 'program'
     if (!r.ok) return setProblems(r.problems);
     navigate('/log');
   }
-
-  const matches = exercises.filter((e) => e.name.toLowerCase().includes(search.trim().toLowerCase()));
 
   return (
     <section className="screen editor">
@@ -168,16 +167,7 @@ export function WorkoutEditor({ mode = 'custom' }: { mode?: 'custom' | 'program'
         <ExerciseForm initialName={search} onSaved={(e) => { setExercises([...exercises, e]); add(e); }} onCancel={() => setCreating(false)} />
       ) : picking ? (
         <div className="card picker">
-          <input type="search" placeholder="Search exercises" value={search} onChange={(e) => setSearch(e.target.value)} autoFocus />
-          <ul>
-            {matches.map((e) => (
-              <li key={e.id}>
-                <button type="button" className="link" onClick={() => add(e)}>
-                  {e.name}{e.custom && <span className="badge">custom</span>}
-                </button>
-              </li>
-            ))}
-          </ul>
+          <ExerciseBrowser exercises={exercises} onPick={add} initialQuery={search} onQueryChange={setSearch} />
           <div className="buttons">
             <button type="button" className="secondary" onClick={() => setCreating(true)}>Create a new exercise</button>
             <button type="button" className="link" onClick={() => setPicking(false)}>Cancel</button>
